@@ -1,0 +1,6 @@
+This is a placeholder for icon-192.png
+The actual icon should be a 192x192 PNG image with your app logo.
+You can create icons using tools like:
+- https://www.pwabuilder.com/imageGenerator
+- https://realfavicongenerator.net/
+- Or design your own in any graphics editor
