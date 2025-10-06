@@ -9,23 +9,14 @@ import TaskSelectionModal from './components/TaskSelectionModal';
 import Toast, { ToastType } from './components/Toast';
 import { parseTaskIntent as parseTaskIntentGemini } from './services/geminiParser';
 import { parseTaskIntent as parseTaskIntentLocal } from './services/semanticParser';
-import { useAuth } from './contexts/AuthContext';
-import { useProject } from './contexts/ProjectContext';
-import { AuthForm } from './components/AuthForm';
-import ProjectManager from './components/ProjectManager';
-import TaskHistoryPanel from './components/TaskHistoryPanel';
 import { supabase } from './lib/supabase';
-import { ListTodo, Search, LogOut, Loader2, FolderOpen, History } from 'lucide-react';
+import { ListTodo, Search } from 'lucide-react';
 
 function App() {
-  const { user, loading: authLoading, signOut } = useAuth();
-  const { currentProject } = useProject();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
-  const [showProjectManager, setShowProjectManager] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
   const [editConfirmData, setEditConfirmData] = useState<{
     voiceText: string;
     matches: ReturnType<typeof findMatchingTasks>;
@@ -37,38 +28,31 @@ function App() {
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
   useEffect(() => {
-    if (!user || !currentProject) {
-      setTasks([]);
-      setLoadingTasks(false);
-      return;
-    }
-
-    const loadTasks = async () => {
-      setLoadingTasks(true);
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('project_id', currentProject.id)
-        .order('created_at', { ascending: false });
-
-      if (!error && data) {
-        const mappedTasks: Task[] = data.map(task => ({
-          id: task.id,
-          title: task.title,
-          description: task.description,
-          status: task.status,
-          priority: task.priority,
-          dueDate: task.due_date ? new Date(task.due_date).getTime() : undefined,
-          tags: task.tags,
-          createdAt: new Date(task.created_at).getTime()
-        }));
-        setTasks(mappedTasks);
-      }
-      setLoadingTasks(false);
-    };
-
     loadTasks();
-  }, [user, currentProject]);
+  }, []);
+
+  const loadTasks = async () => {
+    setLoadingTasks(true);
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      const mappedTasks: Task[] = data.map(task => ({
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        dueDate: task.due_date ? new Date(task.due_date).getTime() : undefined,
+        tags: task.tags,
+        createdAt: new Date(task.created_at).getTime()
+      }));
+      setTasks(mappedTasks);
+    }
+    setLoadingTasks(false);
+  };
 
   const filteredTasks = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
@@ -108,13 +92,9 @@ function App() {
   }, [filteredTasks]);
 
   const handleAddTask = async (taskData: Omit<Task, 'id' | 'createdAt'>) => {
-    if (!user || !currentProject) return;
-
     const { data, error } = await supabase
       .from('tasks')
       .insert({
-        user_id: user.id,
-        project_id: currentProject.id,
         title: taskData.title,
         description: taskData.description || '',
         status: taskData.status,
@@ -137,31 +117,12 @@ function App() {
         createdAt: new Date(data.created_at).getTime()
       };
 
-      await supabase.from('task_history').insert({
-        task_id: data.id,
-        user_id: user.id,
-        action: 'created',
-        changes: { title: data.title, status: data.status }
-      });
-
       setTasks(prev => [newTask, ...prev]);
       setToast({ message: '任务已创建', type: 'created' });
     }
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    if (!user) return;
-
-    const task = tasks.find(t => t.id === taskId);
-    if (task) {
-      await supabase.from('task_history').insert({
-        task_id: taskId,
-        user_id: user.id,
-        action: 'deleted',
-        changes: { title: task.title }
-      });
-    }
-
     const { error } = await supabase
       .from('tasks')
       .delete()
@@ -173,16 +134,6 @@ function App() {
   };
 
   const handleUpdateTask = async (updatedTask: Task) => {
-    if (!user) return;
-
-    const oldTask = tasks.find(t => t.id === updatedTask.id);
-    const changes: Record<string, any> = {};
-    if (oldTask) {
-      if (oldTask.title !== updatedTask.title) changes.title = updatedTask.title;
-      if (oldTask.status !== updatedTask.status) changes.status = updatedTask.status;
-      if (oldTask.priority !== updatedTask.priority) changes.priority = updatedTask.priority;
-    }
-
     const { error } = await supabase
       .from('tasks')
       .update({
@@ -197,14 +148,6 @@ function App() {
       .eq('id', updatedTask.id);
 
     if (!error) {
-      if (Object.keys(changes).length > 0) {
-        await supabase.from('task_history').insert({
-          task_id: updatedTask.id,
-          user_id: user.id,
-          action: 'updated',
-          changes
-        });
-      }
       setTasks(prev => prev.map(task => task.id === updatedTask.id ? updatedTask : task));
       setToast({ message: '任务已更新', type: 'updated' });
     }
@@ -273,18 +216,6 @@ function App() {
     setEditConfirmData(null);
   };
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 flex items-center justify-center">
-        <Loader2 size={48} className="animate-spin text-blue-500" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <AuthForm />;
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 pb-32">
       <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
@@ -293,34 +224,8 @@ function App() {
             <div className="flex items-center gap-3">
               <ListTodo size={28} className="text-blue-500" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-800">项目管理</h1>
-                {currentProject && (
-                  <div className="text-sm text-gray-600 mt-0.5">{currentProject.name}</div>
-                )}
+                <h1 className="text-2xl font-bold text-gray-800">任务管理</h1>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowHistory(true)}
-                className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
-                title="查看编辑历史"
-              >
-                <History size={20} />
-              </button>
-              <button
-                onClick={() => setShowProjectManager(true)}
-                className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
-                title="项目管理"
-              >
-                <FolderOpen size={20} />
-              </button>
-              <button
-                onClick={signOut}
-                className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
-              >
-                <LogOut size={20} />
-                <span className="text-sm font-medium">退出</span>
-              </button>
             </div>
           </div>
 
@@ -365,7 +270,7 @@ function App() {
       <main className="max-w-4xl mx-auto px-6 py-6">
         {loadingTasks ? (
           <div className="flex justify-center py-16">
-            <Loader2 size={32} className="animate-spin text-blue-500" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
           </div>
         ) : sortedTasks.length === 0 ? (
           <div className="text-center py-16">
@@ -426,16 +331,6 @@ function App() {
           onClose={() => setToast(null)}
         />
       )}
-
-      <ProjectManager
-        isOpen={showProjectManager}
-        onClose={() => setShowProjectManager(false)}
-      />
-
-      <TaskHistoryPanel
-        isOpen={showHistory}
-        onClose={() => setShowHistory(false)}
-      />
     </div>
   );
 }
