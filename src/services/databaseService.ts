@@ -14,19 +14,24 @@ class DatabaseService {
   private retryDelay: number = 1000;
 
   async getTasks(): Promise<DatabaseOperationResult<Task[]>> {
-    console.log('[DB Service] Fetching tasks...');
+    console.log('=== [DB Service] getTasks 开始 ===');
 
     try {
+      console.log('[DB Service] 查询数据库...');
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
         .order('created_at', { ascending: false });
 
+      console.log('[DB Service] 数据库响应:', error ? '错误' : '成功', data ? `${data.length}条数据` : '无数据');
+
       if (error) {
         console.error('[DB Service] ❌ Error fetching tasks:', error.message);
+        console.error('[DB Service] Error details:', JSON.stringify(error, null, 2));
 
         if (this.isNetworkError(error)) {
           this.isOnline = false;
+          console.log('[DB Service] 检测到网络错误，设置为离线模式');
           return {
             data: null,
             error: new Error('Network connection failed'),
@@ -42,12 +47,13 @@ class DatabaseService {
       }
 
       if (!data) {
-        console.log('[DB Service] ✓ No tasks found');
+        console.log('[DB Service] ✓ 数据为空，返回空数组');
         this.isOnline = true;
         this.retryCount = 0;
         return { data: [], error: null, isOffline: false };
       }
 
+      console.log('[DB Service] 开始映射数据...');
       const mappedTasks: Task[] = data.map(task => ({
         id: task.id,
         title: task.title,
@@ -59,9 +65,13 @@ class DatabaseService {
         createdAt: new Date(task.created_at).getTime()
       }));
 
-      console.log(`[DB Service] ✓ Fetched ${mappedTasks.length} tasks`);
+      console.log(`[DB Service] ✓ 映射完成，共 ${mappedTasks.length} 条任务`);
+      if (mappedTasks.length > 0) {
+        console.log('[DB Service] 前3条任务:', mappedTasks.slice(0, 3).map(t => ({ id: t.id.substring(0, 8), title: t.title })));
+      }
       this.isOnline = true;
       this.retryCount = 0;
+      console.log('=== [DB Service] getTasks 完成（成功）===');
 
       return {
         data: mappedTasks,
@@ -71,6 +81,7 @@ class DatabaseService {
     } catch (err) {
       console.error('[DB Service] ❌ Exception while fetching tasks:', err);
       this.isOnline = false;
+      console.log('=== [DB Service] getTasks 完成（异常）===');
 
       return {
         data: null,
@@ -82,8 +93,10 @@ class DatabaseService {
 
   async createTask(taskData: Omit<Task, 'id' | 'createdAt'>): Promise<DatabaseOperationResult<Task>> {
     console.log('[DB Service] Creating task:', taskData.title);
+    console.log('[DB Service] Task data:', JSON.stringify(taskData, null, 2));
 
     if (!this.isOnline) {
+      console.warn('[DB Service] ⚠️ Offline mode, cannot create task');
       return {
         data: null,
         error: new Error('Database is offline'),
@@ -92,21 +105,25 @@ class DatabaseService {
     }
 
     try {
+      const insertData = {
+        title: taskData.title,
+        description: taskData.description || '',
+        status: taskData.status || 'todo',
+        priority: taskData.priority || 'medium',
+        due_date: taskData.dueDate ? new Date(taskData.dueDate).toISOString() : null,
+        tags: taskData.tags || []
+      };
+      console.log('[DB Service] Insert data:', JSON.stringify(insertData, null, 2));
+
       const { data, error } = await supabase
         .from('tasks')
-        .insert({
-          title: taskData.title,
-          description: taskData.description || '',
-          status: taskData.status || 'todo',
-          priority: taskData.priority || 'medium',
-          due_date: taskData.dueDate ? new Date(taskData.dueDate).toISOString() : null,
-          tags: taskData.tags || []
-        })
+        .insert(insertData)
         .select()
         .single();
 
       if (error) {
         console.error('[DB Service] ❌ Error creating task:', error.message);
+        console.error('[DB Service] Error details:', JSON.stringify(error, null, 2));
 
         if (this.isNetworkError(error)) {
           this.isOnline = false;
@@ -125,6 +142,7 @@ class DatabaseService {
       }
 
       if (!data) {
+        console.error('[DB Service] ❌ No data returned from insert');
         return {
           data: null,
           error: new Error('No data returned from insert'),
@@ -143,7 +161,8 @@ class DatabaseService {
         createdAt: new Date(data.created_at).getTime()
       };
 
-      console.log('[DB Service] ✓ Task created:', newTask.id);
+      console.log('[DB Service] ✓ Task created successfully');
+      console.log('[DB Service] New task:', JSON.stringify(newTask, null, 2));
       return {
         data: newTask,
         error: null,

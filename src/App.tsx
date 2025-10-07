@@ -104,31 +104,38 @@ function App() {
 
   const loadTasks = async (source: string = 'manual') => {
     try {
-      console.log(`[加载任务-${source}] 开始请求...`);
+      console.log(`=== [加载任务-${source}] 开始 ===`);
 
       const result = await databaseService.getTasks();
 
       if (result.error || result.isOffline) {
         console.warn(`[加载任务-${source}] ⚠️ 数据库${result.isOffline ? '离线' : '错误'}，从本地加载`);
+        console.warn(`[加载任务-${source}] 错误详情:`, result.error?.message);
 
         const localTasks = loadTasksFromLocal();
         if (localTasks && localTasks.length > 0) {
+          console.log(`[加载任务-${source}] ✓ 从本地加载 ${localTasks.length} 条任务`);
           setTasks(localTasks);
           setIsOfflineMode(true);
-          console.log(`[加载任务-${source}] ✓ 从本地加载 ${localTasks.length} 条任务`);
         } else {
+          console.log(`[加载任务-${source}] 本地无数据，设置空列表`);
           setIsOfflineMode(true);
           setTasks([]);
         }
+        console.log(`=== [加载任务-${source}] 完成（离线）===`);
         return;
       }
 
       const loadedTasks = result.data || [];
-      console.log(`[加载任务-${source}] ✓ 成功获取 ${loadedTasks.length} 条任务`);
+      console.log(`[加载任务-${source}] ✓ 数据库返回 ${loadedTasks.length} 条任务`);
+      if (loadedTasks.length > 0) {
+        console.log(`[加载任务-${source}] 前3条任务:`, loadedTasks.slice(0, 3).map(t => ({ id: t.id, title: t.title })));
+      }
 
       setTasks(loadedTasks);
       saveTasksToLocal(loadedTasks);
       setIsOfflineMode(false);
+      console.log(`=== [加载任务-${source}] 完成（成功）===`);
     } catch (err) {
       console.error(`[加载任务-${source}] ❌ 异常:`, err);
 
@@ -141,22 +148,31 @@ function App() {
         setIsOfflineMode(true);
         setTasks([]);
       }
+      console.log(`=== [加载任务-${source}] 完成（异常）===`);
     } finally {
       setLoadingTasks(false);
     }
   };
 
   const filteredTasks = useMemo(() => {
+    console.log('[任务过滤] 开始过滤，原始任务数:', tasks.length);
+    console.log('[任务过滤] 过滤条件 - 完成状态:', showCompleted, '优先级:', priorityFilter, '日期:', dateFilter, '搜索:', searchQuery);
+
     const query = searchQuery.toLowerCase().trim();
     let filtered = showCompleted
       ? tasks.filter(task => task.status === 'done')
       : tasks.filter(task => task.status !== 'done');
 
+    console.log('[任务过滤] 状态过滤后:', filtered.length);
+
     if (priorityFilter !== 'all') {
+      const beforePriority = filtered.length;
       filtered = filtered.filter(task => task.priority === priorityFilter);
+      console.log('[任务过滤] 优先级过滤后:', filtered.length, '(过滤掉', beforePriority - filtered.length, ')');
     }
 
     if (dateFilter === 'today') {
+      const beforeDate = filtered.length;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
@@ -167,7 +183,9 @@ function App() {
         const taskDate = new Date(task.dueDate);
         return taskDate >= today && taskDate < tomorrow;
       });
+      console.log('[任务过滤] 日期过滤（今天）后:', filtered.length, '(过滤掉', beforeDate - filtered.length, ')');
     } else if (dateFilter === 'thisWeek') {
+      const beforeDate = filtered.length;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const dayOfWeek = today.getDay();
@@ -181,18 +199,24 @@ function App() {
         const taskDate = new Date(task.dueDate);
         return taskDate >= monday && taskDate < sunday;
       });
+      console.log('[任务过滤] 日期过滤（本周）后:', filtered.length, '(过滤掉', beforeDate - filtered.length, ')');
     } else if (dateFilter === 'noDate') {
+      const beforeDate = filtered.length;
       filtered = filtered.filter(task => !task.dueDate);
+      console.log('[任务过滤] 日期过滤（无时间）后:', filtered.length, '(过滤掉', beforeDate - filtered.length, ')');
     }
 
     if (query) {
+      const beforeSearch = filtered.length;
       filtered = filtered.filter(task =>
         task.title.toLowerCase().includes(query) ||
         task.description?.toLowerCase().includes(query) ||
         task.tags?.some(tag => tag.toLowerCase().includes(query))
       );
+      console.log('[任务过滤] 搜索过滤后:', filtered.length, '(过滤掉', beforeSearch - filtered.length, ')');
     }
 
+    console.log('[任务过滤] 最终结果:', filtered.length);
     return filtered;
   }, [tasks, searchQuery, showCompleted, priorityFilter, dateFilter]);
 
@@ -219,7 +243,9 @@ function App() {
   }, [filteredTasks, tasks.length]);
 
   const handleAddTask = async (taskData: Omit<Task, 'id' | 'createdAt'>) => {
-    console.log('[创建任务] 开始:', taskData.title);
+    console.log('=== [创建任务] 开始 ===');
+    console.log('[创建任务] 任务数据:', JSON.stringify(taskData, null, 2));
+    console.log('[创建任务] 当前任务列表长度:', tasks.length);
 
     const optimisticTask: Task = {
       id: crypto.randomUUID(),
@@ -227,7 +253,10 @@ function App() {
       createdAt: Date.now()
     };
 
+    console.log('[创建任务] 创建乐观任务:', optimisticTask.id, optimisticTask.title);
+
     const newTasks = [optimisticTask, ...tasks];
+    console.log('[创建任务] 更新任务列表，新长度:', newTasks.length);
     setTasks(newTasks);
     saveTasksToLocal(newTasks);
     setToast({ message: '任务已创建', type: 'created' });
@@ -243,10 +272,13 @@ function App() {
 
     if (isOfflineMode) {
       console.log('[创建任务] 离线模式，仅保存到本地');
+      console.log('=== [创建任务] 完成（离线）===');
       return;
     }
 
+    console.log('[创建任务] 调用数据库服务...');
     const result = await databaseService.createTask(taskData);
+    console.log('[创建任务] 数据库响应:', result.error ? '错误' : '成功', result.isOffline ? '(离线)' : '(在线)');
 
     if (result.error || result.isOffline) {
       console.error('[创建任务] ❌ 失败:', result.error?.message);
@@ -255,17 +287,21 @@ function App() {
         setIsOfflineMode(true);
         console.log('[创建任务] 数据库离线，任务已保存到本地');
       } else {
+        console.log('[创建任务] 回滚乐观更新');
         const updatedTasks = tasks.filter(t => t.id !== optimisticTask.id);
         setTasks(updatedTasks);
         saveTasksToLocal(updatedTasks);
         setToast({ message: `创建失败: ${result.error?.message}`, type: 'updated' });
       }
+      console.log('=== [创建任务] 完成（失败）===');
       return;
     }
 
     if (result.data) {
-      console.log('[创建任务] ✓ 成功，ID:', result.data.id);
+      console.log('[创建任务] ✓ 成功，数据库ID:', result.data.id);
+      console.log('[创建任务] 替换乐观任务ID:', optimisticTask.id, '-> ', result.data.id);
       const updatedTasks = tasks.map(t => t.id === optimisticTask.id ? result.data : t);
+      console.log('[创建任务] 更新后任务列表长度:', updatedTasks.length);
       setTasks(updatedTasks);
       saveTasksToLocal(updatedTasks);
 
@@ -277,28 +313,38 @@ function App() {
         }
       }, 100);
       setTimeout(() => setHighlightedTaskId(null), 2000);
+      console.log('=== [创建任务] 完成（成功）===');
     }
   };
 
   const handleDeleteTask = async (taskId: string) => {
+    console.log('=== [删除任务] 开始 ===');
     console.log('[删除任务] ID:', taskId);
+    console.log('[删除任务] 当前任务列表长度:', tasks.length);
+
     const deletedTask = tasks.find(t => t.id === taskId);
+    console.log('[删除任务] 找到任务:', deletedTask ? deletedTask.title : '未找到');
+
     const newTasks = tasks.filter(task => task.id !== taskId);
+    console.log('[删除任务] 乐观删除，新列表长度:', newTasks.length);
     setTasks(newTasks);
     saveTasksToLocal(newTasks);
     setDeleteConfirmData(null);
 
     if (isOfflineMode) {
       console.log('[删除任务] 离线模式，仅从本地删除');
+      console.log('=== [删除任务] 完成（离线）===');
       return;
     }
 
+    console.log('[删除任务] 调用数据库服务...');
     const result = await databaseService.deleteTask(taskId);
 
     if (result.error || result.isOffline) {
       console.error('[删除任务] ❌ 失败:', result.error?.message);
 
       if (deletedTask) {
+        console.log('[删除任务] 恢复已删除的任务');
         const restoredTasks = [...tasks, deletedTask];
         setTasks(restoredTasks);
         saveTasksToLocal(restoredTasks);
@@ -309,8 +355,10 @@ function App() {
       } else {
         setToast({ message: '删除失败', type: 'updated' });
       }
+      console.log('=== [删除任务] 完成（失败）===');
     } else {
       console.log('[删除任务] ✓ 成功');
+      console.log('=== [删除任务] 完成（成功）===');
     }
   };
 
@@ -322,10 +370,16 @@ function App() {
   };
 
   const handleUpdateTask = async (updatedTask: Task) => {
-    console.log('[更新任务] 开始:', updatedTask.id, updatedTask.title);
+    console.log('=== [更新任务] 开始 ===');
+    console.log('[更新任务] ID:', updatedTask.id);
+    console.log('[更新任务] 更新数据:', JSON.stringify(updatedTask, null, 2));
+    console.log('[更新任务] 当前任务列表长度:', tasks.length);
 
     const oldTask = tasks.find(t => t.id === updatedTask.id);
+    console.log('[更新任务] 找到原任务:', oldTask ? oldTask.title : '未找到');
+
     const updatedTasks = tasks.map(task => task.id === updatedTask.id ? updatedTask : task);
+    console.log('[更新任务] 乐观更新，列表长度:', updatedTasks.length);
     setTasks(updatedTasks);
     saveTasksToLocal(updatedTasks);
     setToast({ message: '任务已更新', type: 'updated' });
@@ -341,15 +395,18 @@ function App() {
 
     if (isOfflineMode) {
       console.log('[更新任务] 离线模式，仅保存到本地');
+      console.log('=== [更新任务] 完成（离线）===');
       return;
     }
 
+    console.log('[更新任务] 调用数据库服务...');
     const result = await databaseService.updateTask(updatedTask.id, updatedTask);
 
     if (result.error || result.isOffline) {
       console.error('[更新任务] ❌ 失败:', result.error?.message);
 
       if (oldTask) {
+        console.log('[更新任务] 回滚到原任务');
         const restoredTasks = tasks.map(task => task.id === updatedTask.id ? oldTask : task);
         setTasks(restoredTasks);
         saveTasksToLocal(restoredTasks);
@@ -360,8 +417,10 @@ function App() {
       } else {
         setToast({ message: `更新失败: ${result.error?.message}`, type: 'updated' });
       }
+      console.log('=== [更新任务] 完成（失败）===');
     } else {
       console.log('[更新任务] ✓ 成功');
+      console.log('=== [更新任务] 完成（成功）===');
     }
   };
 
