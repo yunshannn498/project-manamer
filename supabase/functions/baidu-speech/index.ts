@@ -6,8 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const BAIDU_API_KEY = "YOUR_API_KEY";
-const BAIDU_SECRET_KEY = "YOUR_SECRET_KEY";
+const BAIDU_API_KEY = "wKWqlK4oq2QnUXWExf6Ki7iD";
+const BAIDU_SECRET_KEY = "ay1FwfMs7UWU7V0vDaywUkgo5NsHG7MI";
 
 interface BaiduTokenResponse {
   access_token: string;
