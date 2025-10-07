@@ -202,22 +202,22 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
 
   return (
     <div
-      className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
+      className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 hover:shadow-md transition-shadow cursor-pointer"
       onClick={() => setIsEditing(true)}
     >
-      <div className="flex justify-between items-start gap-3 mb-2">
+      <div className="flex justify-between items-start gap-2 mb-2">
         <h4 className="font-medium text-gray-800 flex-1">{task.title}</h4>
-        <div className="flex gap-2 flex-shrink-0">
+        <div className="flex gap-1">
           {task.status !== 'done' && onComplete && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onComplete();
               }}
-              className="p-2 text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors active:scale-95"
+              className="text-gray-400 hover:text-green-500 transition-colors"
               title="标记为完成"
             >
-              <CheckCircle2 size={20} />
+              <CheckCircle2 size={16} />
             </button>
           )}
           <button
@@ -225,10 +225,9 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
               e.stopPropagation();
               onDelete();
             }}
-            className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors active:scale-95"
-            title="删除任务"
+            className="text-gray-400 hover:text-red-500 transition-colors"
           >
-            <X size={20} />
+            <X size={16} />
           </button>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Task, User } from './types';
+import { Task } from './types';
 import { TaskCard } from './components/TaskCard';
 import { TextInput } from './components/TextInput';
 import { parseVoiceInput } from './utils/taskParser';
@@ -10,19 +10,14 @@ import Toast, { ToastType } from './components/Toast';
 import { parseTaskIntent as parseTaskIntentGemini } from './services/geminiParser';
 import { parseTaskIntent as parseTaskIntentLocal } from './services/semanticParser';
 import { supabase } from './lib/supabase';
-import { ListTodo, Search, LogIn, LogOut, User as UserIcon } from 'lucide-react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { AuthModal } from './components/AuthModal';
+import { ListTodo, Search } from 'lucide-react';
 
-function AppContent() {
-  const { user, signOut } = useAuth();
+function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
-  const [showMyTasksOnly, setShowMyTasksOnly] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [editConfirmData, setEditConfirmData] = useState<{
     voiceText: string;
     matches: ReturnType<typeof findMatchingTasks>;
@@ -52,47 +47,21 @@ function AppContent() {
     try {
       const { data, error } = await supabase
         .from('tasks')
-        .select(`
-          *,
-          user_task_assignments (
-            user_id,
-            assigned_at
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (!error && data) {
-        const tasksWithUsers = await Promise.all(
-          data.map(async (task) => {
-            const assignedUserIds = task.user_task_assignments?.map((a: any) => a.user_id) || [];
-            const assignedUsers: User[] = [];
-
-            if (assignedUserIds.length > 0) {
-              const { data: usersData } = await supabase.auth.admin.listUsers();
-              if (usersData) {
-                assignedUsers.push(
-                  ...usersData.users
-                    .filter(u => assignedUserIds.includes(u.id))
-                    .map(u => ({ id: u.id, email: u.email || '' }))
-                );
-              }
-            }
-
-            return {
-              id: task.id,
-              title: task.title,
-              description: task.description,
-              status: task.status,
-              priority: task.priority,
-              dueDate: task.due_date ? new Date(task.due_date).getTime() : undefined,
-              tags: task.tags,
-              createdAt: new Date(task.created_at).getTime(),
-              createdBy: task.created_by,
-              assignedUsers
-            };
-          })
-        );
-        setTasks(tasksWithUsers);
+        const mappedTasks: Task[] = data.map(task => ({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          status: task.status,
+          priority: task.priority,
+          dueDate: task.due_date ? new Date(task.due_date).getTime() : undefined,
+          tags: task.tags,
+          createdAt: new Date(task.created_at).getTime()
+        }));
+        setTasks(mappedTasks);
       }
     } finally {
       setLoadingTasks(false);
@@ -109,12 +78,6 @@ function AppContent() {
       filtered = filtered.filter(task => task.priority === priorityFilter);
     }
 
-    if (showMyTasksOnly && user) {
-      filtered = filtered.filter(task =>
-        task.assignedUsers?.some(u => u.id === user.id) || task.createdBy === user.id
-      );
-    }
-
     if (query) {
       filtered = filtered.filter(task =>
         task.title.toLowerCase().includes(query) ||
@@ -124,7 +87,7 @@ function AppContent() {
     }
 
     return filtered;
-  }, [tasks, searchQuery, showCompleted, priorityFilter, showMyTasksOnly, user]);
+  }, [tasks, searchQuery, showCompleted, priorityFilter]);
 
   const sortedTasks = useMemo(() => {
     return [...filteredTasks].sort((a, b) => {
@@ -164,21 +127,10 @@ function AppContent() {
         status: taskData.status,
         priority: taskData.priority,
         due_date: taskData.dueDate ? new Date(taskData.dueDate).toISOString() : null,
-        tags: taskData.tags || [],
-        created_by: user?.id
+        tags: taskData.tags || []
       })
       .select()
       .single();
-
-    if (!error && data && user) {
-      await supabase
-        .from('user_task_assignments')
-        .insert({
-          task_id: data.id,
-          user_id: user.id,
-          assigned_by: user.id
-        });
-    }
 
     if (!error && data) {
       const newTask: Task = {
@@ -313,33 +265,8 @@ function AppContent() {
             <div className="flex items-center gap-3">
               <ListTodo size={28} className="text-blue-500" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-800">米米任务池</h1>
+                <h1 className="text-2xl font-bold text-gray-800">任务管理</h1>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {user ? (
-                <>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <UserIcon size={16} />
-                    <span>{user.email}</span>
-                  </div>
-                  <button
-                    onClick={() => signOut()}
-                    className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-                    title="登出"
-                  >
-                    <LogOut size={20} />
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setShowAuthModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                >
-                  <LogIn size={20} />
-                  <span>登录</span>
-                </button>
-              )}
             </div>
           </div>
 
@@ -376,18 +303,6 @@ function AppContent() {
               >
                 已完成
               </button>
-              {user && (
-                <button
-                  onClick={() => setShowMyTasksOnly(!showMyTasksOnly)}
-                  className={`py-2 px-4 rounded-lg transition-colors whitespace-nowrap ${
-                    showMyTasksOnly
-                      ? 'bg-green-500 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  只看我的
-                </button>
-              )}
             </div>
 
             <div className="flex gap-2">
@@ -500,19 +415,7 @@ function AppContent() {
           onClose={() => setToast(null)}
         />
       )}
-
-      {showAuthModal && (
-        <AuthModal onClose={() => setShowAuthModal(false)} />
-      )}
     </div>
-  );
-}
-
-function App() {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
   );
 }
 

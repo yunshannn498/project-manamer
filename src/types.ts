@@ -1,8 +1,3 @@
-export interface User {
-  id: string;
-  email: string;
-}
-
 export interface Task {
   id: string;
   title: string;
@@ -12,8 +7,6 @@ export interface Task {
   priority?: 'low' | 'medium' | 'high';
   tags?: string[];
   status?: string;
-  createdBy?: string;
-  assignedUsers?: User[];
 }
 
 export interface List {
