@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { Mic, MicOff } from 'lucide-react';
+import { BaiduSpeechRecognizer } from '../services/baiduSpeech';
 
 interface VoiceInputProps {
   onTranscript: (text: string) => void;
@@ -8,9 +9,50 @@ interface VoiceInputProps {
 export const VoiceInput = ({ onTranscript }: VoiceInputProps) => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
+  const [useBaidu, setUseBaidu] = useState(true);
   const recognitionRef = useRef<any>(null);
+  const baiduRecognizerRef = useRef<BaiduSpeechRecognizer | null>(null);
+
+  const startListeningBaidu = async () => {
+    try {
+      setIsListening(true);
+      setTranscript('正在录音...');
+
+      if (!baiduRecognizerRef.current) {
+        baiduRecognizerRef.current = new BaiduSpeechRecognizer();
+      }
+
+      await baiduRecognizerRef.current.startRecording();
+    } catch (error) {
+      console.error('百度语音识别错误:', error);
+      alert('无法启动录音：' + (error as Error).message);
+      setIsListening(false);
+    }
+  };
+
+  const stopListeningBaidu = async () => {
+    try {
+      if (!baiduRecognizerRef.current) return;
+
+      setTranscript('识别中...');
+      const text = await baiduRecognizerRef.current.stopRecording();
+      setTranscript(text);
+      onTranscript(text);
+      setIsListening(false);
+    } catch (error) {
+      console.error('语音识别失败:', error);
+      alert('语音识别失败：' + (error as Error).message);
+      setIsListening(false);
+      setTranscript('');
+    }
+  };
 
   const startListening = () => {
+    if (useBaidu) {
+      startListeningBaidu();
+      return;
+    }
+
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       alert('您的浏览器不支持语音识别功能。请使用 Chrome、Edge 或 Safari 浏览器。');
       return;
@@ -62,6 +104,11 @@ export const VoiceInput = ({ onTranscript }: VoiceInputProps) => {
   };
 
   const stopListening = () => {
+    if (useBaidu) {
+      stopListeningBaidu();
+      return;
+    }
+
     if (recognitionRef.current) {
       recognitionRef.current.stop();
     }
@@ -69,7 +116,13 @@ export const VoiceInput = ({ onTranscript }: VoiceInputProps) => {
   };
 
   return (
-    <div className="fixed bottom-8 right-8 z-50">
+    <div className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-2">
+      <button
+        onClick={() => setUseBaidu(!useBaidu)}
+        className="px-3 py-1 bg-gray-700 text-white text-xs rounded-full hover:bg-gray-600 transition-colors"
+      >
+        {useBaidu ? '百度语音' : '浏览器语音'}
+      </button>
       <button
         onClick={isListening ? stopListening : startListening}
         className={`
