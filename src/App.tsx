@@ -60,44 +60,10 @@ function App() {
     testConnection();
     loadTasks('initial');
 
-    console.log('[实时订阅] 设置任务变更监听...');
-    const channel = supabase
-      .channel('tasks-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
-        console.log('[实时订阅] 检测到变更:', payload);
-        console.log('[实时订阅] 当前待处理操作数:', pendingOperationsRef.current.size);
-
-        if (pendingOperationsRef.current.size > 0) {
-          console.log('[实时订阅] 有待处理操作，延迟加载任务');
-          if (loadTasksTimerRef.current) {
-            clearTimeout(loadTasksTimerRef.current);
-          }
-          loadTasksTimerRef.current = setTimeout(() => {
-            console.log('[实时订阅] 延迟加载触发');
-            loadTasks('realtime-delayed');
-          }, 500);
-        } else {
-          console.log('[实时订阅] 无待处理操作，立即加载任务');
-          loadTasks('realtime');
-        }
-      })
-      .subscribe((status) => {
-        console.log('[实时订阅] 状态:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('[实时订阅] ✓ 已成功订阅任务变更');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.warn('[实时订阅] ✗ 订阅失败（不影响基本功能）');
-        } else if (status === 'TIMED_OUT') {
-          console.warn('[实时订阅] ✗ 连接超时（不影响基本功能）');
-        }
-      });
-
     return () => {
-      console.log('[实时订阅] 清理订阅...');
       if (loadTasksTimerRef.current) {
         clearTimeout(loadTasksTimerRef.current);
       }
-      supabase.removeChannel(channel);
     };
   }, []);
 
