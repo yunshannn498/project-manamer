@@ -1,6 +1,6 @@
 {
-  "name": "任务管理",
-  "short_name": "任务管理",
+  "name": "米米项目",
+  "short_name": "米米项目",
   "description": "智能任务管理应用，支持语音输入和AI解析",
   "start_url": "/",
   "display": "standalone",

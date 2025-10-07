@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon-192.png', 'icon-512.png'],
       manifest: {
-        name: '任务管理',
-        short_name: '任务管理',
+        name: '米米项目',
+        short_name: '米米项目',
         description: '智能任务管理应用，支持语音输入和AI解析',
         theme_color: '#3b82f6',
         background_color: '#ffffff',
