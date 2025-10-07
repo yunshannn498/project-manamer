@@ -106,6 +106,15 @@ function App() {
 
       if (error) {
         console.error(`[加载任务-${source}] 数据库错误:`, error);
+
+        const isNetworkError = error.message?.includes('Failed to fetch') ||
+                               error.message?.includes('NetworkError') ||
+                               error.message?.includes('ERR_CONNECTION');
+
+        if (isNetworkError) {
+          console.log(`[加载任务-${source}] 网络连接失败，切换到离线模式`);
+        }
+
         console.log(`[加载任务-${source}] 尝试从本地加载...`);
 
         const localTasks = loadTasksFromLocal();
@@ -510,13 +519,21 @@ function App() {
             <NetworkStatus
               isOffline={isOfflineMode}
               onReconnect={async () => {
+                console.log('[重新连接] 开始尝试重新连接...');
                 setToast({ message: '正在重新连接...', type: 'processing' });
+
+                const wasOffline = isOfflineMode;
                 await loadTasks('reconnect');
-                if (!isOfflineMode) {
-                  setToast({ message: '已重新连接', type: 'updated' });
-                } else {
-                  setToast({ message: '连接失败，请检查网络', type: 'updated' });
-                }
+
+                setTimeout(() => {
+                  if (!isOfflineMode && wasOffline) {
+                    console.log('[重新连接] ✓ 连接成功');
+                    setToast({ message: '已重新连接', type: 'updated' });
+                  } else if (isOfflineMode) {
+                    console.log('[重新连接] ✗ 连接失败，保持离线模式');
+                    setToast({ message: '无法连接到服务器，使用本地数据', type: 'updated' });
+                  }
+                }, 100);
               }}
             />
           </div>

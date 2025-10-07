@@ -9,10 +9,17 @@ interface NetworkStatusProps {
 export default function NetworkStatus({ isOffline, onReconnect }: NetworkStatusProps) {
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [showStatus, setShowStatus] = useState(true);
+  const [browserOnline, setBrowserOnline] = useState(navigator.onLine);
 
   useEffect(() => {
-    const handleOnline = () => setShowStatus(true);
-    const handleOffline = () => setShowStatus(true);
+    const handleOnline = () => {
+      setBrowserOnline(true);
+      setShowStatus(true);
+    };
+    const handleOffline = () => {
+      setBrowserOnline(false);
+      setShowStatus(true);
+    };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -28,15 +35,19 @@ export default function NetworkStatus({ isOffline, onReconnect }: NetworkStatusP
     try {
       await onReconnect();
     } finally {
-      setIsReconnecting(false);
+      setTimeout(() => {
+        setIsReconnecting(false);
+      }, 500);
     }
   };
+
+  const effectiveOffline = isOffline || !browserOnline;
 
   if (!showStatus) return null;
 
   return (
     <div className="flex items-center gap-2">
-      {isOffline ? (
+      {effectiveOffline ? (
         <>
           <div className="hidden md:flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 px-3 py-1.5 rounded-lg text-sm font-medium">
             <WifiOff size={16} className="flex-shrink-0" />
