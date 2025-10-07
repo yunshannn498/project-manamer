@@ -204,6 +204,15 @@ function App() {
   };
 
   const handleUpdateTask = async (updatedTask: Task) => {
+    console.log('[更新任务] 开始更新:', updatedTask.id, updatedTask.title);
+    console.log('[更新任务] 更新内容:', {
+      title: updatedTask.title,
+      status: updatedTask.status,
+      priority: updatedTask.priority,
+      dueDate: updatedTask.dueDate,
+      tags: updatedTask.tags
+    });
+
     const oldTask = tasks.find(t => t.id === updatedTask.id);
     setTasks(prev => prev.map(task => task.id === updatedTask.id ? updatedTask : task));
     setToast({ message: '任务已更新', type: 'updated' });
@@ -221,9 +230,14 @@ function App() {
       })
       .eq('id', updatedTask.id);
 
-    if (error && oldTask) {
-      setTasks(prev => prev.map(task => task.id === updatedTask.id ? oldTask : task));
-      setToast({ message: '更新失败', type: 'updated' });
+    if (error) {
+      console.error('[更新任务] 数据库错误:', error);
+      if (oldTask) {
+        setTasks(prev => prev.map(task => task.id === updatedTask.id ? oldTask : task));
+      }
+      setToast({ message: `更新失败: ${error.message}`, type: 'updated' });
+    } else {
+      console.log('[更新任务] ✓ 成功更新到数据库');
     }
   };
 
@@ -255,30 +269,42 @@ function App() {
     console.log('AI 分析结果:', result);
 
     if (result.intent === 'edit' && result.updates) {
+      console.log('[编辑判断] 检测到编辑意图');
+      console.log('[编辑判断] needsConfirmation:', result.needsConfirmation);
+      console.log('[编辑判断] taskToEdit:', result.taskToEdit);
+      console.log('[编辑判断] updates:', result.updates);
+
       if (result.needsConfirmation && result.suggestedTasks) {
-        console.log('需要用户选择任务');
+        console.log('[编辑判断] 需要用户选择任务，显示选择弹窗');
         setTaskSelectionData({
           tasks: result.suggestedTasks,
           updates: result.updates
         });
       } else if (result.taskToEdit) {
         const task = tasks.find(t => t.id === result.taskToEdit);
+        console.log('[编辑判断] 查找任务结果:', task ? `找到: ${task.title}` : '未找到');
         if (task) {
-          console.log('执行编辑操作（自动匹配）');
+          console.log('[编辑判断] 执行编辑操作，更新内容:', result.updates);
           handleUpdateTask({
             ...task,
             ...result.updates
           });
         } else {
-          console.log('未找到要编辑的任务，创建新任务');
+          console.log('[编辑判断] 未找到要编辑的任务，创建新任务');
           const taskData = result.newTask || parseVoiceInput(text);
           if (taskData.title) {
             handleAddTask(taskData as Omit<Task, 'id' | 'createdAt'>);
           }
         }
+      } else {
+        console.log('[编辑判断] ⚠️ 编辑意图但没有taskToEdit和needsConfirmation，创建新任务');
+        const taskData = result.newTask || parseVoiceInput(text);
+        if (taskData.title) {
+          handleAddTask(taskData as Omit<Task, 'id' | 'createdAt'>);
+        }
       }
     } else {
-      console.log('创建新任务');
+      console.log('[编辑判断] 创建新任务意图');
       const taskData = result.newTask || parseVoiceInput(text);
       if (taskData.title) {
         handleAddTask(taskData as Omit<Task, 'id' | 'createdAt'>);
