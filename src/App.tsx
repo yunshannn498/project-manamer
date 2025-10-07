@@ -12,7 +12,8 @@ import { parseTaskIntent as parseTaskIntentGemini } from './services/geminiParse
 import { parseTaskIntent as parseTaskIntentLocal } from './services/semanticParser';
 import { supabase } from './lib/supabase';
 import { saveTasksToLocal, loadTasksFromLocal } from './storage';
-import { ListTodo, Search } from 'lucide-react';
+import { ListTodo, Search, ChevronDown } from 'lucide-react';
+import NetworkStatus from './components/NetworkStatus';
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -20,6 +21,8 @@ function App() {
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'thisWeek'>('all');
+  const [showPriorityMenu, setShowPriorityMenu] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [editConfirmData, setEditConfirmData] = useState<{
     voiceText: string;
@@ -165,6 +168,33 @@ function App() {
       filtered = filtered.filter(task => task.priority === priorityFilter);
     }
 
+    if (dateFilter === 'today') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      filtered = filtered.filter(task => {
+        if (!task.dueDate) return false;
+        const taskDate = new Date(task.dueDate);
+        return taskDate >= today && taskDate < tomorrow;
+      });
+    } else if (dateFilter === 'thisWeek') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dayOfWeek = today.getDay();
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 7);
+
+      filtered = filtered.filter(task => {
+        if (!task.dueDate) return false;
+        const taskDate = new Date(task.dueDate);
+        return taskDate >= monday && taskDate < sunday;
+      });
+    }
+
     if (query) {
       filtered = filtered.filter(task =>
         task.title.toLowerCase().includes(query) ||
@@ -174,7 +204,7 @@ function App() {
     }
 
     return filtered;
-  }, [tasks, searchQuery, showCompleted, priorityFilter]);
+  }, [tasks, searchQuery, showCompleted, priorityFilter, dateFilter]);
 
   const sortedTasks = useMemo(() => {
     const sorted = [...filteredTasks].sort((a, b) => {
@@ -477,6 +507,18 @@ function App() {
                 <h1 className="text-2xl font-bold text-gray-800">任务管理</h1>
               </div>
             </div>
+            <NetworkStatus
+              isOffline={isOfflineMode}
+              onReconnect={async () => {
+                setToast({ message: '正在重新连接...', type: 'processing' });
+                await loadTasks('reconnect');
+                if (!isOfflineMode) {
+                  setToast({ message: '已重新连接', type: 'updated' });
+                } else {
+                  setToast({ message: '连接失败，请检查网络', type: 'updated' });
+                }
+              }}
+            />
           </div>
 
           <div className="space-y-3">
@@ -516,44 +558,98 @@ function App() {
 
             <div className="flex gap-3 md:gap-2">
               <button
-                onClick={() => setPriorityFilter('all')}
+                onClick={() => setDateFilter('all')}
                 className={`flex-1 py-2.5 md:py-1.5 px-3 rounded-lg text-base md:text-sm transition-colors active:scale-95 ${
-                  priorityFilter === 'all'
+                  dateFilter === 'all'
                     ? 'bg-gray-700 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
                 全部
               </button>
+
+              <div className="relative flex-1">
+                <button
+                  onClick={() => setShowPriorityMenu(!showPriorityMenu)}
+                  className={`w-full py-2.5 md:py-1.5 px-3 rounded-lg text-base md:text-sm transition-colors active:scale-95 flex items-center justify-center gap-1 ${
+                    priorityFilter !== 'all'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <span>{priorityFilter === 'all' ? '优先级' : priorityFilter === 'high' ? '高优先级' : priorityFilter === 'medium' ? '中优先级' : '低优先级'}</span>
+                  <ChevronDown size={16} className={`transition-transform ${
+                    showPriorityMenu ? 'rotate-180' : ''
+                  }`} />
+                </button>
+
+                {showPriorityMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowPriorityMenu(false)}
+                    />
+                    <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-20">
+                      <button
+                        onClick={() => {
+                          setPriorityFilter('all');
+                          setShowPriorityMenu(false);
+                        }}
+                        className="w-full px-3 py-2 text-left hover:bg-gray-50 text-sm text-gray-700 transition-colors"
+                      >
+                        全部优先级
+                      </button>
+                      <button
+                        onClick={() => {
+                          setPriorityFilter('high');
+                          setShowPriorityMenu(false);
+                        }}
+                        className="w-full px-3 py-2 text-left hover:bg-red-50 text-sm text-red-600 transition-colors"
+                      >
+                        高优先级
+                      </button>
+                      <button
+                        onClick={() => {
+                          setPriorityFilter('medium');
+                          setShowPriorityMenu(false);
+                        }}
+                        className="w-full px-3 py-2 text-left hover:bg-amber-50 text-sm text-amber-600 transition-colors"
+                      >
+                        中优先级
+                      </button>
+                      <button
+                        onClick={() => {
+                          setPriorityFilter('low');
+                          setShowPriorityMenu(false);
+                        }}
+                        className="w-full px-3 py-2 text-left hover:bg-green-50 text-sm text-green-600 transition-colors"
+                      >
+                        低优先级
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
               <button
-                onClick={() => setPriorityFilter('high')}
+                onClick={() => setDateFilter('today')}
                 className={`flex-1 py-2.5 md:py-1.5 px-3 rounded-lg text-base md:text-sm transition-colors active:scale-95 ${
-                  priorityFilter === 'high'
-                    ? 'bg-red-500 text-white'
+                  dateFilter === 'today'
+                    ? 'bg-blue-500 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                高优先级
+                今天
               </button>
               <button
-                onClick={() => setPriorityFilter('medium')}
+                onClick={() => setDateFilter('thisWeek')}
                 className={`flex-1 py-2.5 md:py-1.5 px-3 rounded-lg text-base md:text-sm transition-colors active:scale-95 ${
-                  priorityFilter === 'medium'
-                    ? 'bg-amber-500 text-white'
+                  dateFilter === 'thisWeek'
+                    ? 'bg-blue-500 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                中优先级
-              </button>
-              <button
-                onClick={() => setPriorityFilter('low')}
-                className={`flex-1 py-2.5 md:py-1.5 px-3 rounded-lg text-base md:text-sm transition-colors active:scale-95 ${
-                  priorityFilter === 'low'
-                    ? 'bg-green-500 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                低优先级
+                本周
               </button>
             </div>
           </div>
