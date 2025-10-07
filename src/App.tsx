@@ -12,7 +12,7 @@ import { parseTaskIntent as parseTaskIntentGemini } from './services/geminiParse
 import { parseTaskIntent as parseTaskIntentLocal } from './services/semanticParser';
 import { supabase } from './lib/supabase';
 import { saveTasksToLocal, loadTasksFromLocal } from './storage';
-import { ListTodo, Search, WifiOff } from 'lucide-react';
+import { ListTodo, Search } from 'lucide-react';
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -109,11 +109,9 @@ function App() {
         if (localTasks && localTasks.length > 0) {
           setTasks(localTasks);
           setIsOfflineMode(true);
-          setToast({ message: '离线模式：已从本地加载任务', type: 'updated' });
           console.log(`[加载任务-${source}] ✓ 已从本地加载`, localTasks.length, '条任务');
         } else {
           setIsOfflineMode(true);
-          setToast({ message: '连接失败，暂无本地数据', type: 'updated' });
         }
         return;
       }
@@ -148,11 +146,9 @@ function App() {
       if (localTasks && localTasks.length > 0) {
         setTasks(localTasks);
         setIsOfflineMode(true);
-        setToast({ message: '离线模式：已从本地加载任务', type: 'updated' });
         console.log(`[加载任务-${source}] ✓ 异常恢复，已从本地加载`, localTasks.length, '条任务');
       } else {
         setIsOfflineMode(true);
-        setToast({ message: '连接失败，暂无本地数据', type: 'updated' });
       }
     } finally {
       setLoadingTasks(false);
@@ -481,12 +477,6 @@ function App() {
                 <h1 className="text-2xl font-bold text-gray-800">任务管理</h1>
               </div>
             </div>
-            {isOfflineMode && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg">
-                <WifiOff size={16} className="text-amber-600" />
-                <span className="text-xs font-medium text-amber-700">离线模式</span>
-              </div>
-            )}
           </div>
 
           <div className="space-y-3">
