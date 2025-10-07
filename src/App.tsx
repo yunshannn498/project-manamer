@@ -21,7 +21,7 @@ function App() {
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
-  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'thisWeek'>('all');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'thisWeek' | 'noDate'>('all');
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [editConfirmData, setEditConfirmData] = useState<{
@@ -202,6 +202,8 @@ function App() {
         const taskDate = new Date(task.dueDate);
         return taskDate >= monday && taskDate < sunday;
       });
+    } else if (dateFilter === 'noDate') {
+      filtered = filtered.filter(task => !task.dueDate);
     }
 
     if (query) {
@@ -667,6 +669,16 @@ function App() {
                 }`}
               >
                 本周
+              </button>
+              <button
+                onClick={() => setDateFilter('noDate')}
+                className={`flex-1 py-2.5 md:py-1.5 px-3 rounded-lg text-base md:text-sm transition-colors active:scale-95 ${
+                  dateFilter === 'noDate'
+                    ? 'bg-gray-500 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                无时间
               </button>
             </div>
           </div>
