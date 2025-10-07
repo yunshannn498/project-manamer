@@ -43,16 +43,16 @@ export default function Toast({ message, type, onClose, duration = 3000 }: Toast
   };
 
   return (
-    <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-50 animate-slideUp">
-      <div className={`bg-white rounded-lg shadow-lg border-2 ${getBorderColor()} px-4 py-3 flex items-center gap-3 min-w-[300px] max-w-md`}>
+    <div className="fixed bottom-28 md:bottom-24 left-1/2 transform -translate-x-1/2 z-50 animate-slideUp px-4">
+      <div className={`bg-white rounded-lg shadow-lg border-2 ${getBorderColor()} px-5 py-4 md:px-4 md:py-3 flex items-center gap-3 min-w-[280px] max-w-md`}>
         {getIcon()}
-        <p className="text-gray-900 font-medium flex-1">{message}</p>
+        <p className="text-gray-900 font-medium flex-1 text-base md:text-sm">{message}</p>
         {type !== 'processing' && (
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+            className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0 active:scale-95 p-1"
           >
-            <X size={18} />
+            <X size={20} className="md:w-[18px] md:h-[18px]" />
           </button>
         )}
       </div>

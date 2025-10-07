@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Task } from './types';
 import { TaskCard } from './components/TaskCard';
 import { TextInput } from './components/TextInput';
@@ -6,6 +6,7 @@ import { parseVoiceInput } from './utils/taskParser';
 import { findMatchingTasks } from './utils/taskMatcher';
 import { EditConfirmModal } from './components/EditConfirmModal';
 import TaskSelectionModal from './components/TaskSelectionModal';
+import DeleteConfirmModal from './components/DeleteConfirmModal';
 import Toast, { ToastType } from './components/Toast';
 import { parseTaskIntent as parseTaskIntentGemini } from './services/geminiParser';
 import { parseTaskIntent as parseTaskIntentLocal } from './services/semanticParser';
@@ -29,6 +30,10 @@ function App() {
     updates: Partial<Task>;
   } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const [deleteConfirmData, setDeleteConfirmData] = useState<{ taskId: string; taskTitle: string } | null>(null);
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const scrollThreshold = 50;
 
   const loadTasksTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pendingOperationsRef = useRef<Set<string>>(new Set());
@@ -93,6 +98,30 @@ function App() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  const handleScroll = useCallback(() => {
+    if (window.innerWidth >= 768) {
+      setIsHeaderVisible(true);
+      return;
+    }
+
+    const currentScrollY = window.scrollY;
+    const scrollDifference = currentScrollY - lastScrollY.current;
+
+    if (Math.abs(scrollDifference) > scrollThreshold) {
+      if (scrollDifference > 0 && currentScrollY > 100) {
+        setIsHeaderVisible(false);
+      } else if (scrollDifference < 0) {
+        setIsHeaderVisible(true);
+      }
+      lastScrollY.current = currentScrollY;
+    }
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
 
   const loadTasks = async (source: string = 'manual') => {
     try {
@@ -281,6 +310,7 @@ function App() {
     const newTasks = tasks.filter(task => task.id !== taskId);
     setTasks(newTasks);
     saveTasksToLocal(newTasks);
+    setDeleteConfirmData(null);
 
     if (isOfflineMode) {
       console.log('[离线模式] 任务已从本地删除');
@@ -297,6 +327,13 @@ function App() {
       setTasks(restoredTasks);
       saveTasksToLocal(restoredTasks);
       setToast({ message: '删除失败', type: 'updated' });
+    }
+  };
+
+  const handleDeleteClick = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      setDeleteConfirmData({ taskId, taskTitle: task.title });
     }
   };
 
@@ -435,8 +472,10 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 pb-32">
-      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-6 py-4">
+      <header className={`bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10 transition-transform duration-300 ${
+        isHeaderVisible ? 'translate-y-0' : '-translate-y-full'
+      }`}>
+        <div className="max-w-4xl mx-auto px-4 py-5 md:px-6 md:py-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <ListTodo size={28} className="text-blue-500" />
@@ -454,20 +493,20 @@ function App() {
 
           <div className="space-y-3">
             <div className="relative">
-              <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Search size={22} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 md:w-5 md:h-5" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="搜索任务..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-3 md:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
               />
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-3 md:gap-2">
               <button
                 onClick={() => setShowCompleted(false)}
-                className={`flex-1 py-2 px-4 rounded-lg transition-colors ${
+                className={`flex-1 py-3 md:py-2 px-4 rounded-lg transition-colors text-base active:scale-95 ${
                   !showCompleted
                     ? 'bg-blue-500 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -477,7 +516,7 @@ function App() {
               </button>
               <button
                 onClick={() => setShowCompleted(true)}
-                className={`flex-1 py-2 px-4 rounded-lg transition-colors ${
+                className={`flex-1 py-3 md:py-2 px-4 rounded-lg transition-colors text-base active:scale-95 ${
                   showCompleted
                     ? 'bg-blue-500 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -487,10 +526,10 @@ function App() {
               </button>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-3 md:gap-2">
               <button
                 onClick={() => setPriorityFilter('all')}
-                className={`flex-1 py-1.5 px-3 rounded-lg text-sm transition-colors ${
+                className={`flex-1 py-2.5 md:py-1.5 px-3 rounded-lg text-base md:text-sm transition-colors active:scale-95 ${
                   priorityFilter === 'all'
                     ? 'bg-gray-700 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -500,7 +539,7 @@ function App() {
               </button>
               <button
                 onClick={() => setPriorityFilter('high')}
-                className={`flex-1 py-1.5 px-3 rounded-lg text-sm transition-colors ${
+                className={`flex-1 py-2.5 md:py-1.5 px-3 rounded-lg text-base md:text-sm transition-colors active:scale-95 ${
                   priorityFilter === 'high'
                     ? 'bg-red-500 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -510,7 +549,7 @@ function App() {
               </button>
               <button
                 onClick={() => setPriorityFilter('medium')}
-                className={`flex-1 py-1.5 px-3 rounded-lg text-sm transition-colors ${
+                className={`flex-1 py-2.5 md:py-1.5 px-3 rounded-lg text-base md:text-sm transition-colors active:scale-95 ${
                   priorityFilter === 'medium'
                     ? 'bg-amber-500 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -520,7 +559,7 @@ function App() {
               </button>
               <button
                 onClick={() => setPriorityFilter('low')}
-                className={`flex-1 py-1.5 px-3 rounded-lg text-sm transition-colors ${
+                className={`flex-1 py-2.5 md:py-1.5 px-3 rounded-lg text-base md:text-sm transition-colors active:scale-95 ${
                   priorityFilter === 'low'
                     ? 'bg-green-500 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -540,7 +579,7 @@ function App() {
           </div>
         ) : sortedTasks.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-gray-500">
+            <p className="text-gray-500 text-base">
               {searchQuery
                 ? '未找到匹配的任务'
                 : showCompleted
@@ -549,12 +588,12 @@ function App() {
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4 md:space-y-3">
             {sortedTasks.map(task => (
               <TaskCard
                 key={task.id}
                 task={task}
-                onDelete={() => handleDeleteTask(task.id)}
+                onDelete={() => handleDeleteClick(task.id)}
                 onUpdate={handleUpdateTask}
                 onComplete={() => handleCompleteTask(task.id)}
               />
@@ -587,6 +626,15 @@ function App() {
             setTaskSelectionData(null);
           }}
           onCancel={() => setTaskSelectionData(null)}
+        />
+      )}
+
+      {deleteConfirmData && (
+        <DeleteConfirmModal
+          isOpen={true}
+          taskTitle={deleteConfirmData.taskTitle}
+          onConfirm={() => handleDeleteTask(deleteConfirmData.taskId)}
+          onCancel={() => setDeleteConfirmData(null)}
         />
       )}
 

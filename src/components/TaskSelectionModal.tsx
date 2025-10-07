@@ -29,11 +29,11 @@ export default function TaskSelectionModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">选择要编辑的任务</h3>
-          <p className="text-sm text-gray-600 mt-2">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onCancel}>
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="p-5 md:p-6 border-b border-gray-200">
+          <h3 className="text-xl md:text-lg font-semibold text-gray-900">选择要编辑的任务</h3>
+          <p className="text-base md:text-sm text-gray-600 mt-2">
             将{getUpdateDescription()}
           </p>
         </div>
@@ -44,11 +44,11 @@ export default function TaskSelectionModal({
               <button
                 key={task.id}
                 onClick={() => onSelect(task.id)}
-                className="w-full text-left p-4 rounded-lg border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-colors"
+                className="w-full text-left p-5 md:p-4 rounded-lg border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-colors active:scale-[0.98]"
               >
-                <div className="font-medium text-gray-900">{task.title}</div>
+                <div className="font-medium text-gray-900 text-lg md:text-base">{task.title}</div>
                 {task.dueDate && (
-                  <div className="text-sm text-gray-500 mt-1">
+                  <div className="text-base md:text-sm text-gray-500 mt-1">
                     截止：{new Date(task.dueDate).toLocaleDateString('zh-CN')}
                   </div>
                 )}
@@ -60,7 +60,7 @@ export default function TaskSelectionModal({
         <div className="p-4 border-t border-gray-200 flex justify-end">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className="px-6 py-3 md:px-4 md:py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors active:scale-95"
           >
             取消
           </button>

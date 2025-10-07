@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Task } from '../types';
 import { X, Tag, Clock, Check, CheckCircle2 } from 'lucide-react';
+import TaskEditModal from './TaskEditModal';
 
 interface TaskCardProps {
   task: Task;
@@ -11,6 +12,8 @@ interface TaskCardProps {
 
 export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMobileModal, setShowMobileModal] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
   const [editDescription, setEditDescription] = useState(task.description || '');
   const [editPriority, setEditPriority] = useState(task.priority || '');
@@ -30,6 +33,15 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
     }
     return '';
   });
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const priorityColors = {
     low: 'bg-blue-100 text-blue-700',
@@ -81,6 +93,19 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
     }
   };
 
+  const handleCardClick = () => {
+    if (isMobile) {
+      setShowMobileModal(true);
+    } else {
+      setIsEditing(true);
+    }
+  };
+
+  const handleMobileSave = (updatedTask: Task) => {
+    onUpdate(updatedTask);
+    setShowMobileModal(false);
+  };
+
   const handleCancel = () => {
     setEditTitle(task.title);
     setEditDescription(task.description || '');
@@ -106,7 +131,7 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
 
   const dueDateInfo = task.dueDate ? formatDueDate(task.dueDate) : null;
 
-  if (isEditing) {
+  if (isEditing && !isMobile) {
     return (
       <div className="bg-white rounded-lg shadow-sm border-2 border-blue-500 p-3">
         <div className="space-y-3">
@@ -116,7 +141,7 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
               type="text"
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
               autoFocus
             />
           </div>
@@ -126,7 +151,7 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
             <textarea
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-base"
               rows={2}
             />
           </div>
@@ -136,7 +161,7 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
             <select
               value={editPriority}
               onChange={(e) => setEditPriority(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
             >
               <option value="">无</option>
               <option value="low">低</option>
@@ -151,7 +176,7 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
               type="date"
               value={editDueDate}
               onChange={(e) => setEditDueDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
             />
           </div>
 
@@ -162,7 +187,7 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
                 type="time"
                 value={editDueTime}
                 onChange={(e) => setEditDueTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
               />
             </div>
           )}
@@ -183,13 +208,13 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
           <div className="flex gap-2 justify-end">
             <button
               onClick={handleCancel}
-              className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors active:scale-95"
             >
               取消
             </button>
             <button
               onClick={handleSave}
-              className="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-1"
+              className="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-1 active:scale-95"
             >
               <Check size={16} />
               保存
@@ -201,66 +226,74 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
   }
 
   return (
-    <div
-      className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 hover:shadow-md transition-shadow cursor-pointer"
-      onClick={() => setIsEditing(true)}
-    >
-      <div className="flex justify-between items-start gap-2 mb-2">
-        <h4 className="font-medium text-gray-800 flex-1">{task.title}</h4>
-        <div className="flex gap-1">
-          {task.status !== 'done' && onComplete && (
+    <>
+      <TaskEditModal
+        isOpen={showMobileModal}
+        task={task}
+        onSave={handleMobileSave}
+        onCancel={() => setShowMobileModal(false)}
+      />
+      <div
+        className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 md:p-3 hover:shadow-md transition-shadow cursor-pointer active:scale-[0.98]"
+        onClick={handleCardClick}
+      >
+        <div className="flex justify-between items-start gap-2 mb-2">
+          <h4 className="font-medium text-gray-800 flex-1 text-lg md:text-base">{task.title}</h4>
+          <div className="flex gap-2 md:gap-1">
+            {task.status !== 'done' && onComplete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onComplete();
+                }}
+                className="text-gray-400 hover:text-green-500 transition-colors p-2 md:p-0 active:scale-95"
+                title="标记为完成"
+              >
+                <CheckCircle2 size={20} className="md:w-4 md:h-4" />
+              </button>
+            )}
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onComplete();
+                onDelete();
               }}
-              className="text-gray-400 hover:text-green-500 transition-colors"
-              title="标记为完成"
+              className="text-gray-400 hover:text-red-500 transition-colors p-2 md:p-0 active:scale-95"
             >
-              <CheckCircle2 size={16} />
+              <X size={20} className="md:w-4 md:h-4" />
             </button>
+          </div>
+        </div>
+
+        {task.description && (
+          <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+        )}
+
+        <div className="flex flex-wrap gap-2 items-center">
+          {task.priority && (
+            <span className={`text-sm md:text-xs px-3 py-1.5 md:px-2 md:py-1 rounded-full ${priorityColors[task.priority]}`}>
+              {task.priority === 'low' ? '低' : task.priority === 'medium' ? '中' : '高'}
+            </span>
           )}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            className="text-gray-400 hover:text-red-500 transition-colors"
-          >
-            <X size={16} />
-          </button>
+
+          {dueDateInfo && (
+            <div className={`flex gap-1 items-center text-sm md:text-xs px-3 py-1.5 md:px-2 md:py-1 rounded ${dueDateInfo.color}`}>
+              <Clock size={14} className="md:w-3 md:h-3" />
+              <span>{dueDateInfo.text}</span>
+            </div>
+          )}
+
+          {task.tags && task.tags.length > 0 && (
+            <div className="flex gap-1 items-center">
+              <Tag size={14} className="text-gray-400 md:w-3 md:h-3" />
+              {task.tags.map((tag, i) => (
+                <span key={i} className="text-sm md:text-xs bg-gray-100 text-gray-600 px-3 py-1.5 md:px-2 md:py-1 rounded">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
-
-      {task.description && (
-        <p className="text-sm text-gray-600 mb-2">{task.description}</p>
-      )}
-
-      <div className="flex flex-wrap gap-2 items-center">
-        {task.priority && (
-          <span className={`text-xs px-2 py-1 rounded-full ${priorityColors[task.priority]}`}>
-            {task.priority === 'low' ? '低' : task.priority === 'medium' ? '中' : '高'}
-          </span>
-        )}
-
-        {dueDateInfo && (
-          <div className={`flex gap-1 items-center text-xs px-2 py-1 rounded ${dueDateInfo.color}`}>
-            <Clock size={12} />
-            <span>{dueDateInfo.text}</span>
-          </div>
-        )}
-
-        {task.tags && task.tags.length > 0 && (
-          <div className="flex gap-1 items-center">
-            <Tag size={12} className="text-gray-400" />
-            {task.tags.map((tag, i) => (
-              <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+    </>
   );
 };
