@@ -66,13 +66,20 @@ export const TextInput = ({ onSubmit }: TextInputProps) => {
   };
 
   const stopRecording = () => {
+    console.log('[语音输入-TextInput] stopRecording 被调用');
+    console.log('[语音输入-TextInput] recordingText:', recordingText);
+    console.log('[语音输入-TextInput] hasSubmittedRef.current:', hasSubmittedRef.current);
+
     if (recognitionRef.current) {
       recognitionRef.current.stop();
     }
 
     if (recordingText.trim() && !hasSubmittedRef.current) {
+      console.log('[语音输入-TextInput] ✓ 提交语音文本:', recordingText.trim());
       hasSubmittedRef.current = true;
       onSubmit(recordingText.trim());
+    } else {
+      console.log('[语音输入-TextInput] ✗ 不提交，原因:', !recordingText.trim() ? '文本为空' : '已提交过');
     }
 
     setIsRecording(false);

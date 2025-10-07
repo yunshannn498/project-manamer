@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Task } from './types';
 import { TaskCard } from './components/TaskCard';
 import { TextInput } from './components/TextInput';
@@ -30,13 +30,16 @@ function App() {
   } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
+  const loadTasksTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingOperationsRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     console.log('[初始化] Supabase URL:', import.meta.env.VITE_SUPABASE_URL || '使用默认值');
     console.log('[初始化] 开始加载任务...');
 
     const testConnection = async () => {
       try {
-        const { data, error } = await supabase.from('tasks').select('count').limit(1);
+        const { error } = await supabase.from('tasks').select('count').limit(1);
         if (error) {
           console.error('[连接测试] 数据库连接失败:', error);
         } else {
@@ -48,14 +51,28 @@ function App() {
     };
 
     testConnection();
-    loadTasks();
+    loadTasks('initial');
 
     console.log('[实时订阅] 设置任务变更监听...');
     const channel = supabase
       .channel('tasks-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
         console.log('[实时订阅] 检测到变更:', payload);
-        loadTasks();
+        console.log('[实时订阅] 当前待处理操作数:', pendingOperationsRef.current.size);
+
+        if (pendingOperationsRef.current.size > 0) {
+          console.log('[实时订阅] 有待处理操作，延迟加载任务');
+          if (loadTasksTimerRef.current) {
+            clearTimeout(loadTasksTimerRef.current);
+          }
+          loadTasksTimerRef.current = setTimeout(() => {
+            console.log('[实时订阅] 延迟加载触发');
+            loadTasks('realtime-delayed');
+          }, 500);
+        } else {
+          console.log('[实时订阅] 无待处理操作，立即加载任务');
+          loadTasks('realtime');
+        }
       })
       .subscribe((status) => {
         console.log('[实时订阅] 状态:', status);
@@ -70,13 +87,17 @@ function App() {
 
     return () => {
       console.log('[实时订阅] 清理订阅...');
+      if (loadTasksTimerRef.current) {
+        clearTimeout(loadTasksTimerRef.current);
+      }
       supabase.removeChannel(channel);
     };
   }, []);
 
-  const loadTasks = async () => {
+  const loadTasks = async (source: string = 'manual') => {
     try {
-      console.log('[加载任务] 开始请求...', new Date().toISOString());
+      console.log(`[加载任务-${source}] 开始请求...`, new Date().toISOString());
+      console.log(`[加载任务-${source}] 当前任务数:`, tasks.length);
 
       const { data, error } = await supabase
         .from('tasks')
@@ -84,15 +105,15 @@ function App() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('[加载任务] 数据库错误:', error);
-        console.log('[加载任务] 尝试从本地加载...');
+        console.error(`[加载任务-${source}] 数据库错误:`, error);
+        console.log(`[加载任务-${source}] 尝试从本地加载...`);
 
         const localTasks = loadTasksFromLocal();
         if (localTasks && localTasks.length > 0) {
           setTasks(localTasks);
           setIsOfflineMode(true);
           setToast({ message: '离线模式：已从本地加载任务', type: 'updated' });
-          console.log('[加载任务] ✓ 已从本地加载', localTasks.length, '条任务');
+          console.log(`[加载任务-${source}] ✓ 已从本地加载`, localTasks.length, '条任务');
         } else {
           setIsOfflineMode(true);
           setToast({ message: '连接失败，暂无本地数据', type: 'updated' });
@@ -101,12 +122,12 @@ function App() {
       }
 
       if (!data) {
-        console.warn('[加载任务] 数据为空');
+        console.warn(`[加载任务-${source}] 数据为空`);
         setTasks([]);
         return;
       }
 
-      console.log('[加载任务] 成功获取', data.length, '条任务');
+      console.log(`[加载任务-${source}] 成功获取`, data.length, '条任务');
 
       const mappedTasks: Task[] = data.map(task => ({
         id: task.id,
@@ -122,16 +143,16 @@ function App() {
       setTasks(mappedTasks);
       saveTasksToLocal(mappedTasks);
       setIsOfflineMode(false);
-      console.log('[加载任务] 状态已更新');
+      console.log(`[加载任务-${source}] 状态已更新，最终任务数:`, mappedTasks.length);
     } catch (err) {
-      console.error('[加载任务] 异常:', err);
+      console.error(`[加载任务-${source}] 异常:`, err);
 
       const localTasks = loadTasksFromLocal();
       if (localTasks && localTasks.length > 0) {
         setTasks(localTasks);
         setIsOfflineMode(true);
         setToast({ message: '离线模式：已从本地加载任务', type: 'updated' });
-        console.log('[加载任务] ✓ 异常恢复，已从本地加载', localTasks.length, '条任务');
+        console.log(`[加载任务-${source}] ✓ 异常恢复，已从本地加载`, localTasks.length, '条任务');
       } else {
         setIsOfflineMode(true);
         setToast({ message: '连接失败，暂无本地数据', type: 'updated' });
@@ -185,22 +206,34 @@ function App() {
   }, [filteredTasks, tasks.length]);
 
   const handleAddTask = async (taskData: Omit<Task, 'id' | 'createdAt'>) => {
+    const operationId = crypto.randomUUID().substring(0, 8);
+    console.log(`[handleAddTask-${operationId}] 开始创建任务`);
+    console.log(`[handleAddTask-${operationId}] 任务数据:`, taskData);
+
+    pendingOperationsRef.current.add(operationId);
+    console.log(`[handleAddTask-${operationId}] 注册待处理操作，当前数量:`, pendingOperationsRef.current.size);
+
     const optimisticTask: Task = {
       id: crypto.randomUUID(),
       ...taskData,
       createdAt: Date.now()
     };
 
+    console.log(`[handleAddTask-${operationId}] 乐观更新，临时ID:`, optimisticTask.id);
+
     const newTasks = [optimisticTask, ...tasks];
     setTasks(newTasks);
     saveTasksToLocal(newTasks);
+    console.log(`[handleAddTask-${operationId}] ✓ 乐观更新完成，当前任务数:`, newTasks.length);
     setToast({ message: '任务已创建', type: 'created' });
 
     if (isOfflineMode) {
-      console.log('[离线模式] 任务已保存到本地');
+      console.log(`[handleAddTask-${operationId}] 离线模式，任务已保存到本地`);
+      pendingOperationsRef.current.delete(operationId);
       return;
     }
 
+    console.log(`[handleAddTask-${operationId}] 开始数据库插入...`);
     const { data, error } = await supabase
       .from('tasks')
       .insert({
@@ -215,6 +248,7 @@ function App() {
       .single();
 
     if (!error && data) {
+      console.log(`[handleAddTask-${operationId}] ✓ 数据库插入成功，真实ID:`, data.id);
       const newTask: Task = {
         id: data.id,
         title: data.title,
@@ -229,12 +263,17 @@ function App() {
       const updatedTasks = tasks.map(t => t.id === optimisticTask.id ? newTask : t);
       setTasks(updatedTasks);
       saveTasksToLocal(updatedTasks);
+      console.log(`[handleAddTask-${operationId}] ✓ ID替换完成`);
     } else {
+      console.error(`[handleAddTask-${operationId}] ✗ 数据库插入失败:`, error);
       const updatedTasks = tasks.filter(t => t.id !== optimisticTask.id);
       setTasks(updatedTasks);
       saveTasksToLocal(updatedTasks);
-      setToast({ message: '创建失败', type: 'updated' });
+      setToast({ message: `创建失败: ${error?.message || '未知错误'}`, type: 'updated' });
     }
+
+    pendingOperationsRef.current.delete(operationId);
+    console.log(`[handleAddTask-${operationId}] 注销待处理操作，剩余数量:`, pendingOperationsRef.current.size);
   };
 
   const handleDeleteTask = async (taskId: string) => {
@@ -316,6 +355,13 @@ function App() {
   };
 
   const handleTextSubmit = async (text: string) => {
+    console.log('===========================================');
+    console.log('[handleTextSubmit] 被调用！');
+    console.log('[handleTextSubmit] 输入文本:', text);
+    console.log('[handleTextSubmit] 文本长度:', text.length);
+    console.log('[handleTextSubmit] 当前时间:', new Date().toISOString());
+    console.log('===========================================');
+
     setToast({ message: '正在处理...', type: 'processing' });
 
     console.log('=== AI 语义分析 ===');
