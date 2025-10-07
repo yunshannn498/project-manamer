@@ -455,28 +455,49 @@ function App() {
     try {
       console.log('[导入任务] 模式:', mode, '任务数:', importedTasks.length);
 
-      let newTasks: Task[];
+      if (isOfflineMode) {
+        console.log('[导入任务] 离线模式，仅保存到本地');
+        let newTasks: Task[];
 
-      if (mode === 'replace') {
-        newTasks = importedTasks;
-      } else {
-        const existingIds = new Set(tasks.map(t => t.id));
-        const uniqueImported = importedTasks.filter(t => !existingIds.has(t.id));
-        newTasks = [...tasks, ...uniqueImported];
+        if (mode === 'replace') {
+          newTasks = importedTasks;
+        } else {
+          const existingIds = new Set(tasks.map(t => t.id));
+          const uniqueImported = importedTasks.filter(t => !existingIds.has(t.id));
+          newTasks = [...tasks, ...uniqueImported];
+        }
+
+        setTasks(newTasks);
+        saveTasksToLocal(newTasks);
+
+        setToast({
+          message: mode === 'replace'
+            ? `已替换 ${importedTasks.length} 个任务`
+            : `已导入 ${uniqueImported.length} 个新任务`,
+          type: 'added'
+        });
+        return;
       }
 
-      setTasks(newTasks);
-      saveTasksToLocal(newTasks);
+      setToast({ message: '正在导入...', type: 'processing' });
 
-      if (!isOfflineMode) {
-        console.log('[导入任务] 同步到数据库...');
-        await loadTasks('import-sync');
+      for (const task of importedTasks) {
+        console.log('[导入任务] 创建任务:', task.title);
+        await databaseService.createTask({
+          title: task.title,
+          description: task.description,
+          status: task.status,
+          priority: task.priority,
+          dueDate: task.dueDate,
+          tags: task.tags
+        });
       }
+
+      console.log('[导入任务] 重新加载任务列表...');
+      await loadTasks('import-complete');
 
       setToast({
-        message: mode === 'replace'
-          ? `已替换 ${importedTasks.length} 个任务`
-          : `已导入 ${importedTasks.filter(t => !tasks.find(et => et.id === t.id)).length} 个新任务`,
+        message: `成功导入 ${importedTasks.length} 个任务`,
         type: 'added'
       });
 
