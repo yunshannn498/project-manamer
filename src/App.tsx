@@ -10,7 +10,8 @@ import DeleteConfirmModal from './components/DeleteConfirmModal';
 import Toast, { ToastType } from './components/Toast';
 import { parseTaskIntent as parseTaskIntentGemini } from './services/geminiParser';
 import { parseTaskIntent as parseTaskIntentLocal } from './services/semanticParser';
-import { supabase } from './lib/supabase';
+import { testDatabaseConnection } from './lib/supabase';
+import { databaseService } from './services/databaseService';
 import { saveTasksToLocal, loadTasksFromLocal } from './storage';
 import { ListTodo, Search, ChevronDown, Download } from 'lucide-react';
 import NetworkStatus from './components/NetworkStatus';
@@ -46,24 +47,29 @@ function App() {
   const taskRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   useEffect(() => {
+    console.log('[初始化] 应用启动...');
     console.log('[初始化] Supabase URL:', import.meta.env.VITE_SUPABASE_URL || '使用默认值');
-    console.log('[初始化] 开始加载任务...');
 
-    const testConnection = async () => {
-      try {
-        const { error } = await supabase.from('tasks').select('count').limit(1);
-        if (error) {
-          console.error('[连接测试] 数据库连接失败:', error);
-        } else {
-          console.log('[连接测试] ✓ 数据库连接正常');
+    const initializeApp = async () => {
+      const isConnected = await testDatabaseConnection();
+
+      if (!isConnected) {
+        console.warn('[初始化] ⚠️ 数据库连接失败，启用离线模式');
+        setIsOfflineMode(true);
+
+        const localTasks = loadTasksFromLocal();
+        if (localTasks && localTasks.length > 0) {
+          setTasks(localTasks);
+          console.log(`[初始化] ✓ 从本地加载 ${localTasks.length} 条任务`);
         }
-      } catch (err) {
-        console.error('[连接测试] 连接异常:', err);
+        setLoadingTasks(false);
+      } else {
+        console.log('[初始化] ✓ 数据库连接成功');
+        await loadTasks('initial');
       }
     };
 
-    testConnection();
-    loadTasks('initial');
+    initializeApp();
 
     return () => {
       if (loadTasksTimerRef.current) {
@@ -98,71 +104,42 @@ function App() {
 
   const loadTasks = async (source: string = 'manual') => {
     try {
-      console.log(`[加载任务-${source}] 开始请求...`, new Date().toISOString());
-      console.log(`[加载任务-${source}] 当前任务数:`, tasks.length);
+      console.log(`[加载任务-${source}] 开始请求...`);
 
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const result = await databaseService.getTasks();
 
-      if (error) {
-        console.error(`[加载任务-${source}] 数据库错误:`, error);
-
-        const isNetworkError = error.message?.includes('Failed to fetch') ||
-                               error.message?.includes('NetworkError') ||
-                               error.message?.includes('ERR_CONNECTION');
-
-        if (isNetworkError) {
-          console.log(`[加载任务-${source}] 网络连接失败，切换到离线模式`);
-        }
-
-        console.log(`[加载任务-${source}] 尝试从本地加载...`);
+      if (result.error || result.isOffline) {
+        console.warn(`[加载任务-${source}] ⚠️ 数据库${result.isOffline ? '离线' : '错误'}，从本地加载`);
 
         const localTasks = loadTasksFromLocal();
         if (localTasks && localTasks.length > 0) {
           setTasks(localTasks);
           setIsOfflineMode(true);
-          console.log(`[加载任务-${source}] ✓ 已从本地加载`, localTasks.length, '条任务');
+          console.log(`[加载任务-${source}] ✓ 从本地加载 ${localTasks.length} 条任务`);
         } else {
           setIsOfflineMode(true);
+          setTasks([]);
         }
         return;
       }
 
-      if (!data) {
-        console.warn(`[加载任务-${source}] 数据为空`);
-        setTasks([]);
-        return;
-      }
+      const loadedTasks = result.data || [];
+      console.log(`[加载任务-${source}] ✓ 成功获取 ${loadedTasks.length} 条任务`);
 
-      console.log(`[加载任务-${source}] 成功获取`, data.length, '条任务');
-
-      const mappedTasks: Task[] = data.map(task => ({
-        id: task.id,
-        title: task.title,
-        description: task.description,
-        status: task.status,
-        priority: task.priority,
-        dueDate: task.due_date ? new Date(task.due_date).getTime() : undefined,
-        tags: task.tags,
-        createdAt: new Date(task.created_at).getTime()
-      }));
-
-      setTasks(mappedTasks);
-      saveTasksToLocal(mappedTasks);
+      setTasks(loadedTasks);
+      saveTasksToLocal(loadedTasks);
       setIsOfflineMode(false);
-      console.log(`[加载任务-${source}] 状态已更新，最终任务数:`, mappedTasks.length);
     } catch (err) {
-      console.error(`[加载任务-${source}] 异常:`, err);
+      console.error(`[加载任务-${source}] ❌ 异常:`, err);
 
       const localTasks = loadTasksFromLocal();
       if (localTasks && localTasks.length > 0) {
         setTasks(localTasks);
         setIsOfflineMode(true);
-        console.log(`[加载任务-${source}] ✓ 异常恢复，已从本地加载`, localTasks.length, '条任务');
+        console.log(`[加载任务-${source}] ✓ 异常恢复，从本地加载 ${localTasks.length} 条任务`);
       } else {
         setIsOfflineMode(true);
+        setTasks([]);
       }
     } finally {
       setLoadingTasks(false);
@@ -242,12 +219,7 @@ function App() {
   }, [filteredTasks, tasks.length]);
 
   const handleAddTask = async (taskData: Omit<Task, 'id' | 'createdAt'>) => {
-    const operationId = crypto.randomUUID().substring(0, 8);
-    console.log(`[handleAddTask-${operationId}] 开始创建任务`);
-    console.log(`[handleAddTask-${operationId}] 任务数据:`, taskData);
-
-    pendingOperationsRef.current.add(operationId);
-    console.log(`[handleAddTask-${operationId}] 注册待处理操作，当前数量:`, pendingOperationsRef.current.size);
+    console.log('[创建任务] 开始:', taskData.title);
 
     const optimisticTask: Task = {
       id: crypto.randomUUID(),
@@ -255,12 +227,9 @@ function App() {
       createdAt: Date.now()
     };
 
-    console.log(`[handleAddTask-${operationId}] 乐观更新，临时ID:`, optimisticTask.id);
-
     const newTasks = [optimisticTask, ...tasks];
     setTasks(newTasks);
     saveTasksToLocal(newTasks);
-    console.log(`[handleAddTask-${operationId}] ✓ 乐观更新完成，当前任务数:`, newTasks.length);
     setToast({ message: '任务已创建', type: 'created' });
 
     setHighlightedTaskId(optimisticTask.id);
@@ -270,69 +239,49 @@ function App() {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }, 100);
-
     setTimeout(() => setHighlightedTaskId(null), 2000);
 
     if (isOfflineMode) {
-      console.log(`[handleAddTask-${operationId}] 离线模式，任务已保存到本地`);
-      pendingOperationsRef.current.delete(operationId);
+      console.log('[创建任务] 离线模式，仅保存到本地');
       return;
     }
 
-    console.log(`[handleAddTask-${operationId}] 开始数据库插入...`);
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert({
-        title: taskData.title,
-        description: taskData.description || '',
-        status: taskData.status,
-        priority: taskData.priority,
-        due_date: taskData.dueDate ? new Date(taskData.dueDate).toISOString() : null,
-        tags: taskData.tags || []
-      })
-      .select()
-      .single();
+    const result = await databaseService.createTask(taskData);
 
-    if (!error && data) {
-      console.log(`[handleAddTask-${operationId}] ✓ 数据库插入成功，真实ID:`, data.id);
-      const newTask: Task = {
-        id: data.id,
-        title: data.title,
-        description: data.description,
-        status: data.status,
-        priority: data.priority,
-        dueDate: data.due_date ? new Date(data.due_date).getTime() : undefined,
-        tags: data.tags,
-        createdAt: new Date(data.created_at).getTime()
-      };
+    if (result.error || result.isOffline) {
+      console.error('[创建任务] ❌ 失败:', result.error?.message);
 
-      const updatedTasks = tasks.map(t => t.id === optimisticTask.id ? newTask : t);
+      if (result.isOffline) {
+        setIsOfflineMode(true);
+        console.log('[创建任务] 数据库离线，任务已保存到本地');
+      } else {
+        const updatedTasks = tasks.filter(t => t.id !== optimisticTask.id);
+        setTasks(updatedTasks);
+        saveTasksToLocal(updatedTasks);
+        setToast({ message: `创建失败: ${result.error?.message}`, type: 'updated' });
+      }
+      return;
+    }
+
+    if (result.data) {
+      console.log('[创建任务] ✓ 成功，ID:', result.data.id);
+      const updatedTasks = tasks.map(t => t.id === optimisticTask.id ? result.data : t);
       setTasks(updatedTasks);
       saveTasksToLocal(updatedTasks);
-      console.log(`[handleAddTask-${operationId}] ✓ ID替换完成`);
 
-      setHighlightedTaskId(newTask.id);
+      setHighlightedTaskId(result.data.id);
       setTimeout(() => {
-        const element = taskRefs.current.get(newTask.id);
+        const element = taskRefs.current.get(result.data.id);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, 100);
-
       setTimeout(() => setHighlightedTaskId(null), 2000);
-    } else {
-      console.error(`[handleAddTask-${operationId}] ✗ 数据库插入失败:`, error);
-      const updatedTasks = tasks.filter(t => t.id !== optimisticTask.id);
-      setTasks(updatedTasks);
-      saveTasksToLocal(updatedTasks);
-      setToast({ message: `创建失败: ${error?.message || '未知错误'}`, type: 'updated' });
     }
-
-    pendingOperationsRef.current.delete(operationId);
-    console.log(`[handleAddTask-${operationId}] 注销待处理操作，剩余数量:`, pendingOperationsRef.current.size);
   };
 
   const handleDeleteTask = async (taskId: string) => {
+    console.log('[删除任务] ID:', taskId);
     const deletedTask = tasks.find(t => t.id === taskId);
     const newTasks = tasks.filter(task => task.id !== taskId);
     setTasks(newTasks);
@@ -340,20 +289,28 @@ function App() {
     setDeleteConfirmData(null);
 
     if (isOfflineMode) {
-      console.log('[离线模式] 任务已从本地删除');
+      console.log('[删除任务] 离线模式，仅从本地删除');
       return;
     }
 
-    const { error } = await supabase
-      .from('tasks')
-      .delete()
-      .eq('id', taskId);
+    const result = await databaseService.deleteTask(taskId);
 
-    if (error && deletedTask) {
-      const restoredTasks = [...tasks, deletedTask];
-      setTasks(restoredTasks);
-      saveTasksToLocal(restoredTasks);
-      setToast({ message: '删除失败', type: 'updated' });
+    if (result.error || result.isOffline) {
+      console.error('[删除任务] ❌ 失败:', result.error?.message);
+
+      if (deletedTask) {
+        const restoredTasks = [...tasks, deletedTask];
+        setTasks(restoredTasks);
+        saveTasksToLocal(restoredTasks);
+      }
+
+      if (result.isOffline) {
+        setIsOfflineMode(true);
+      } else {
+        setToast({ message: '删除失败', type: 'updated' });
+      }
+    } else {
+      console.log('[删除任务] ✓ 成功');
     }
   };
 
@@ -365,14 +322,7 @@ function App() {
   };
 
   const handleUpdateTask = async (updatedTask: Task) => {
-    console.log('[更新任务] 开始更新:', updatedTask.id, updatedTask.title);
-    console.log('[更新任务] 更新内容:', {
-      title: updatedTask.title,
-      status: updatedTask.status,
-      priority: updatedTask.priority,
-      dueDate: updatedTask.dueDate,
-      tags: updatedTask.tags
-    });
+    console.log('[更新任务] 开始:', updatedTask.id, updatedTask.title);
 
     const oldTask = tasks.find(t => t.id === updatedTask.id);
     const updatedTasks = tasks.map(task => task.id === updatedTask.id ? updatedTask : task);
@@ -380,7 +330,6 @@ function App() {
     saveTasksToLocal(updatedTasks);
     setToast({ message: '任务已更新', type: 'updated' });
 
-    // 高亮并滚动到更新的任务
     setHighlightedTaskId(updatedTask.id);
     setTimeout(() => {
       const element = taskRefs.current.get(updatedTask.id);
@@ -391,33 +340,28 @@ function App() {
     setTimeout(() => setHighlightedTaskId(null), 2000);
 
     if (isOfflineMode) {
-      console.log('[离线模式] 任务已保存到本地');
+      console.log('[更新任务] 离线模式，仅保存到本地');
       return;
     }
 
-    const { error } = await supabase
-      .from('tasks')
-      .update({
-        title: updatedTask.title,
-        description: updatedTask.description || '',
-        status: updatedTask.status,
-        priority: updatedTask.priority,
-        due_date: updatedTask.dueDate ? new Date(updatedTask.dueDate).toISOString() : null,
-        tags: updatedTask.tags || [],
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', updatedTask.id);
+    const result = await databaseService.updateTask(updatedTask.id, updatedTask);
 
-    if (error) {
-      console.error('[更新任务] 数据库错误:', error);
+    if (result.error || result.isOffline) {
+      console.error('[更新任务] ❌ 失败:', result.error?.message);
+
       if (oldTask) {
         const restoredTasks = tasks.map(task => task.id === updatedTask.id ? oldTask : task);
         setTasks(restoredTasks);
         saveTasksToLocal(restoredTasks);
       }
-      setToast({ message: `更新失败: ${error.message}`, type: 'updated' });
+
+      if (result.isOffline) {
+        setIsOfflineMode(true);
+      } else {
+        setToast({ message: `更新失败: ${result.error?.message}`, type: 'updated' });
+      }
     } else {
-      console.log('[更新任务] ✓ 成功更新到数据库');
+      console.log('[更新任务] ✓ 成功');
     }
   };
 
@@ -509,6 +453,8 @@ function App() {
 
   const handleImport = async (importedTasks: Task[], mode: 'merge' | 'replace') => {
     try {
+      console.log('[导入任务] 模式:', mode, '任务数:', importedTasks.length);
+
       let newTasks: Task[];
 
       if (mode === 'replace') {
@@ -519,36 +465,13 @@ function App() {
         newTasks = [...tasks, ...uniqueImported];
       }
 
-      if (!isOfflineMode) {
-        if (mode === 'replace') {
-          const { error: deleteError } = await supabase
-            .from('tasks')
-            .delete()
-            .neq('id', '00000000-0000-0000-0000-000000000000');
-
-          if (deleteError) throw deleteError;
-        }
-
-        for (const task of importedTasks) {
-          const { error } = await supabase
-            .from('tasks')
-            .upsert({
-              id: task.id,
-              title: task.title,
-              description: task.description,
-              status: task.status,
-              priority: task.priority,
-              due_date: task.dueDate ? new Date(task.dueDate).toISOString() : null,
-              tags: task.tags || [],
-              created_at: new Date(task.createdAt).toISOString(),
-            });
-
-          if (error) throw error;
-        }
-      }
-
       setTasks(newTasks);
       saveTasksToLocal(newTasks);
+
+      if (!isOfflineMode) {
+        console.log('[导入任务] 同步到数据库...');
+        await loadTasks('import-sync');
+      }
 
       setToast({
         message: mode === 'replace'
@@ -556,8 +479,10 @@ function App() {
           : `已导入 ${importedTasks.filter(t => !tasks.find(et => et.id === t.id)).length} 个新任务`,
         type: 'added'
       });
+
+      console.log('[导入任务] ✓ 完成');
     } catch (error) {
-      console.error('[导入错误]', error);
+      console.error('[导入任务] ❌ 错误:', error);
       setToast({ message: '导入失败', type: 'updated' });
     }
   };
