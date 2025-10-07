@@ -73,11 +73,21 @@ ${existingTasks.map((t, i) => `${i + 1}. ID: ${t.id}, 标题: "${t.title}", 截�
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Gemini API error:', response.status, errorText);
       throw new Error(`Gemini API error: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log('Gemini API 完整响应:', JSON.stringify(data, null, 2));
+
     const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    console.log('Gemini 返回文本:', textResponse);
+
+    if (!textResponse) {
+      console.error('Gemini 没有返回任何文本，完整数据:', data);
+      throw new Error('Empty response from Gemini');
+    }
 
     let jsonText = textResponse.trim();
     if (jsonText.startsWith('```json')) {
@@ -88,11 +98,12 @@ ${existingTasks.map((t, i) => `${i + 1}. ID: ${t.id}, 标题: "${t.title}", 截�
 
     const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.error('Response text:', textResponse);
+      console.error('无法从响应中提取 JSON，原始文本:', textResponse);
       throw new Error('No JSON found in response');
     }
 
     const result = JSON.parse(jsonMatch[0]);
+    console.log('解析结果:', result);
 
     if (result.intent === 'edit' && result.updates?.dueDate) {
       result.updates.dueDate = Number(result.updates.dueDate);
