@@ -1,8 +1,14 @@
 import { Task } from '../types';
 
 const parseDateTime = (text: string): number | undefined => {
+  console.log('[parseDateTime] 输入文本:', text);
   const lowerText = text.toLowerCase();
   const now = new Date();
+
+  const isPM = lowerText.includes('下午') || lowerText.includes('晚上') || lowerText.includes('傍晚');
+  const isAM = lowerText.includes('上午') || lowerText.includes('早上') || lowerText.includes('清晨');
+  const isNoon = lowerText.includes('中午');
+  console.log('[parseDateTime] 时间段标识: isPM=', isPM, 'isAM=', isAM, 'isNoon=', isNoon);
 
   if (lowerText.includes('今天')) {
     const timeMatch = text.match(/(\d{1,2})[点:：](\d{1,2})?/);
@@ -10,7 +16,13 @@ const parseDateTime = (text: string): number | undefined => {
       let hours = parseInt(timeMatch[1]);
       const minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
 
-      if (hours <= 12 && hours < now.getHours()) {
+      if (isPM && hours < 12) {
+        hours += 12;
+      } else if (isNoon && hours === 12) {
+        hours = 12;
+      } else if (isAM && hours === 12) {
+        hours = 0;
+      } else if (hours <= 12 && hours < now.getHours() && !isAM && !isPM) {
         hours += 12;
       }
 
@@ -28,8 +40,17 @@ const parseDateTime = (text: string): number | undefined => {
     const date = new Date(now);
     date.setDate(date.getDate() + 1);
     if (timeMatch) {
-      const hours = parseInt(timeMatch[1]);
+      let hours = parseInt(timeMatch[1]);
       const minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+
+      if (isPM && hours < 12) {
+        hours += 12;
+      } else if (isNoon && hours === 12) {
+        hours = 12;
+      } else if (isAM && hours === 12) {
+        hours = 0;
+      }
+
       date.setHours(hours, minutes, 0, 0);
     } else {
       date.setHours(23, 59, 59, 999);
@@ -42,8 +63,17 @@ const parseDateTime = (text: string): number | undefined => {
     const date = new Date(now);
     date.setDate(date.getDate() + 2);
     if (timeMatch) {
-      const hours = parseInt(timeMatch[1]);
+      let hours = parseInt(timeMatch[1]);
       const minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+
+      if (isPM && hours < 12) {
+        hours += 12;
+      } else if (isNoon && hours === 12) {
+        hours = 12;
+      } else if (isAM && hours === 12) {
+        hours = 0;
+      }
+
       date.setHours(hours, minutes, 0, 0);
     } else {
       date.setHours(23, 59, 59, 999);
@@ -92,8 +122,17 @@ const parseDateTime = (text: string): number | undefined => {
 
     const timeMatch = text.match(/(\d{1,2})[点:：](\d{1,2})?/);
     if (timeMatch) {
-      const hours = parseInt(timeMatch[1]);
+      let hours = parseInt(timeMatch[1]);
       const minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+
+      if (isPM && hours < 12) {
+        hours += 12;
+      } else if (isNoon && hours === 12) {
+        hours = 12;
+      } else if (isAM && hours === 12) {
+        hours = 0;
+      }
+
       date.setHours(hours, minutes, 0, 0);
     } else {
       date.setHours(23, 59, 59, 999);
@@ -134,19 +173,33 @@ const parseDateTime = (text: string): number | undefined => {
   }
 
   const timeMatch = text.match(/(\d{1,2})[点:：](\d{1,2})?/);
+  console.log('[parseDateTime] 时间匹配结果:', timeMatch);
   if (timeMatch) {
     let hours = parseInt(timeMatch[1]);
     const minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+    console.log('[parseDateTime] 原始小时:', hours, '分钟:', minutes);
 
-    if (hours <= 12 && hours < now.getHours()) {
+    if (isPM && hours < 12) {
+      console.log('[parseDateTime] 下午转换: ', hours, '->', hours + 12);
+      hours += 12;
+    } else if (isNoon && hours === 12) {
+      console.log('[parseDateTime] 中午保持12');
+      hours = 12;
+    } else if (isAM && hours === 12) {
+      console.log('[parseDateTime] 上午12点转成0');
+      hours = 0;
+    } else if (hours <= 12 && hours < now.getHours() && !isAM && !isPM) {
+      console.log('[parseDateTime] 智能转换(小于当前时间): ', hours, '->', hours + 12);
       hours += 12;
     }
 
+    console.log('[parseDateTime] 最终结果:', hours.toString().padStart(2, '0') + ':' + minutes.toString().padStart(2, '0'));
     const date = new Date(now);
     date.setHours(hours, minutes, 0, 0);
     return date.getTime();
   }
 
+  console.log('[parseDateTime] 未匹配到任何时间格式');
   return undefined;
 };
 
