@@ -17,6 +17,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [priorityFilter, setPriorityFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
   const [editConfirmData, setEditConfirmData] = useState<{
     voiceText: string;
     matches: ReturnType<typeof findMatchingTasks>;
@@ -60,6 +61,10 @@ function App() {
       ? tasks.filter(task => task.status === 'done')
       : tasks.filter(task => task.status !== 'done');
 
+    if (priorityFilter !== 'all') {
+      filtered = filtered.filter(task => task.priority === priorityFilter);
+    }
+
     if (query) {
       filtered = filtered.filter(task =>
         task.title.toLowerCase().includes(query) ||
@@ -69,7 +74,7 @@ function App() {
     }
 
     return filtered;
-  }, [tasks, searchQuery, showCompleted]);
+  }, [tasks, searchQuery, showCompleted, priorityFilter]);
 
   const sortedTasks = useMemo(() => {
     return [...filteredTasks].sort((a, b) => {
@@ -261,6 +266,49 @@ function App() {
                 }`}
               >
                 已完成
+              </button>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPriorityFilter('all')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-sm transition-colors ${
+                  priorityFilter === 'all'
+                    ? 'bg-gray-700 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                全部
+              </button>
+              <button
+                onClick={() => setPriorityFilter('high')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-sm transition-colors ${
+                  priorityFilter === 'high'
+                    ? 'bg-red-500 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                高优先级
+              </button>
+              <button
+                onClick={() => setPriorityFilter('medium')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-sm transition-colors ${
+                  priorityFilter === 'medium'
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                中优先级
+              </button>
+              <button
+                onClick={() => setPriorityFilter('low')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-sm transition-colors ${
+                  priorityFilter === 'low'
+                    ? 'bg-green-500 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                低优先级
               </button>
             </div>
           </div>
