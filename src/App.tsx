@@ -10,7 +10,8 @@ import Toast, { ToastType } from './components/Toast';
 import { parseTaskIntent as parseTaskIntentGemini } from './services/geminiParser';
 import { parseTaskIntent as parseTaskIntentLocal } from './services/semanticParser';
 import { supabase } from './lib/supabase';
-import { ListTodo, Search } from 'lucide-react';
+import { saveTasksToLocal, loadTasksFromLocal } from './storage';
+import { ListTodo, Search, WifiOff } from 'lucide-react';
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -18,6 +19,7 @@ function App() {
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [editConfirmData, setEditConfirmData] = useState<{
     voiceText: string;
     matches: ReturnType<typeof findMatchingTasks>;
@@ -70,7 +72,18 @@ function App() {
 
       if (error) {
         console.error('[加载任务] 数据库错误:', error);
-        setToast({ message: `加载失败: ${error.message}`, type: 'updated' });
+        console.log('[加载任务] 尝试从本地加载...');
+
+        const localTasks = loadTasksFromLocal();
+        if (localTasks && localTasks.length > 0) {
+          setTasks(localTasks);
+          setIsOfflineMode(true);
+          setToast({ message: '离线模式：已从本地加载任务', type: 'updated' });
+          console.log('[加载任务] ✓ 已从本地加载', localTasks.length, '条任务');
+        } else {
+          setIsOfflineMode(true);
+          setToast({ message: '连接失败，暂无本地数据', type: 'updated' });
+        }
         return;
       }
 
@@ -94,10 +107,22 @@ function App() {
       }));
 
       setTasks(mappedTasks);
+      saveTasksToLocal(mappedTasks);
+      setIsOfflineMode(false);
       console.log('[加载任务] 状态已更新');
     } catch (err) {
       console.error('[加载任务] 异常:', err);
-      setToast({ message: '加载任务时发生错误', type: 'updated' });
+
+      const localTasks = loadTasksFromLocal();
+      if (localTasks && localTasks.length > 0) {
+        setTasks(localTasks);
+        setIsOfflineMode(true);
+        setToast({ message: '离线模式：已从本地加载任务', type: 'updated' });
+        console.log('[加载任务] ✓ 异常恢复，已从本地加载', localTasks.length, '条任务');
+      } else {
+        setIsOfflineMode(true);
+        setToast({ message: '连接失败，暂无本地数据', type: 'updated' });
+      }
     } finally {
       setLoadingTasks(false);
     }
@@ -153,8 +178,15 @@ function App() {
       createdAt: Date.now()
     };
 
-    setTasks(prev => [optimisticTask, ...prev]);
+    const newTasks = [optimisticTask, ...tasks];
+    setTasks(newTasks);
+    saveTasksToLocal(newTasks);
     setToast({ message: '任务已创建', type: 'created' });
+
+    if (isOfflineMode) {
+      console.log('[离线模式] 任务已保存到本地');
+      return;
+    }
 
     const { data, error } = await supabase
       .from('tasks')
@@ -181,16 +213,27 @@ function App() {
         createdAt: new Date(data.created_at).getTime()
       };
 
-      setTasks(prev => prev.map(t => t.id === optimisticTask.id ? newTask : t));
+      const updatedTasks = tasks.map(t => t.id === optimisticTask.id ? newTask : t);
+      setTasks(updatedTasks);
+      saveTasksToLocal(updatedTasks);
     } else {
-      setTasks(prev => prev.filter(t => t.id !== optimisticTask.id));
+      const updatedTasks = tasks.filter(t => t.id !== optimisticTask.id);
+      setTasks(updatedTasks);
+      saveTasksToLocal(updatedTasks);
       setToast({ message: '创建失败', type: 'updated' });
     }
   };
 
   const handleDeleteTask = async (taskId: string) => {
     const deletedTask = tasks.find(t => t.id === taskId);
-    setTasks(prev => prev.filter(task => task.id !== taskId));
+    const newTasks = tasks.filter(task => task.id !== taskId);
+    setTasks(newTasks);
+    saveTasksToLocal(newTasks);
+
+    if (isOfflineMode) {
+      console.log('[离线模式] 任务已从本地删除');
+      return;
+    }
 
     const { error } = await supabase
       .from('tasks')
@@ -198,7 +241,9 @@ function App() {
       .eq('id', taskId);
 
     if (error && deletedTask) {
-      setTasks(prev => [...prev, deletedTask]);
+      const restoredTasks = [...tasks, deletedTask];
+      setTasks(restoredTasks);
+      saveTasksToLocal(restoredTasks);
       setToast({ message: '删除失败', type: 'updated' });
     }
   };
@@ -214,8 +259,15 @@ function App() {
     });
 
     const oldTask = tasks.find(t => t.id === updatedTask.id);
-    setTasks(prev => prev.map(task => task.id === updatedTask.id ? updatedTask : task));
+    const updatedTasks = tasks.map(task => task.id === updatedTask.id ? updatedTask : task);
+    setTasks(updatedTasks);
+    saveTasksToLocal(updatedTasks);
     setToast({ message: '任务已更新', type: 'updated' });
+
+    if (isOfflineMode) {
+      console.log('[离线模式] 任务已保存到本地');
+      return;
+    }
 
     const { error } = await supabase
       .from('tasks')
@@ -233,7 +285,9 @@ function App() {
     if (error) {
       console.error('[更新任务] 数据库错误:', error);
       if (oldTask) {
-        setTasks(prev => prev.map(task => task.id === updatedTask.id ? oldTask : task));
+        const restoredTasks = tasks.map(task => task.id === updatedTask.id ? oldTask : task);
+        setTasks(restoredTasks);
+        saveTasksToLocal(restoredTasks);
       }
       setToast({ message: `更新失败: ${error.message}`, type: 'updated' });
     } else {
@@ -331,6 +385,12 @@ function App() {
                 <h1 className="text-2xl font-bold text-gray-800">任务管理</h1>
               </div>
             </div>
+            {isOfflineMode && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg">
+                <WifiOff size={16} className="text-amber-600" />
+                <span className="text-xs font-medium text-amber-700">离线模式</span>
+              </div>
+            )}
           </div>
 
           <div className="space-y-3">
