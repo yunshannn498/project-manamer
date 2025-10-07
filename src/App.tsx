@@ -203,13 +203,17 @@ function App() {
         } else {
           console.log('未找到要编辑的任务，创建新任务');
           const taskData = result.newTask || parseVoiceInput(text);
-          handleAddTask(taskData);
+          if (taskData.title) {
+            handleAddTask(taskData as Omit<Task, 'id' | 'createdAt'>);
+          }
         }
       }
     } else {
       console.log('创建新任务');
       const taskData = result.newTask || parseVoiceInput(text);
-      handleAddTask(taskData);
+      if (taskData.title) {
+        handleAddTask(taskData as Omit<Task, 'id' | 'createdAt'>);
+      }
     }
   };
 

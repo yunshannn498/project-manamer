@@ -42,6 +42,8 @@ export const ListColumn = ({ list, onAddTask, onDeleteTask, onDeleteList }: List
             key={task.id}
             task={task}
             onDelete={() => onDeleteTask(list.id, task.id)}
+            onUpdate={() => {}}
+            onComplete={() => {}}
           />
         ))}
       </div>

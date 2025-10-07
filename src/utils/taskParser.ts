@@ -226,7 +226,7 @@ export const parseEditIntent = (text: string): Partial<Omit<Task, 'id' | 'create
   }
 
   if (lowerText.includes('清除时间') || lowerText.includes('取消时间') || lowerText.includes('删除时间')) {
-    updates.dueDate = null;
+    updates.dueDate = undefined;
   }
 
   const tags: string[] = [];

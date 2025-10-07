@@ -6,6 +6,8 @@ interface ParseResponse {
   updates?: Partial<Task>;
   newTask?: Partial<Task>;
   confidence: number;
+  needsConfirmation?: boolean;
+  suggestedTasks?: Task[];
 }
 
 const GEMINI_API_KEY = 'AIzaSyDt75m63rOV4qAZAtX-MRypBEi_qrONM4o';
