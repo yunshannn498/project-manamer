@@ -30,29 +30,42 @@ function App() {
 
   useEffect(() => {
     loadTasks();
+
+    const channel = supabase
+      .channel('tasks-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+        loadTasks();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const loadTasks = async () => {
-    setLoadingTasks(true);
-    const { data, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (!error && data) {
-      const mappedTasks: Task[] = data.map(task => ({
-        id: task.id,
-        title: task.title,
-        description: task.description,
-        status: task.status,
-        priority: task.priority,
-        dueDate: task.due_date ? new Date(task.due_date).getTime() : undefined,
-        tags: task.tags,
-        createdAt: new Date(task.created_at).getTime()
-      }));
-      setTasks(mappedTasks);
+      if (!error && data) {
+        const mappedTasks: Task[] = data.map(task => ({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          status: task.status,
+          priority: task.priority,
+          dueDate: task.due_date ? new Date(task.due_date).getTime() : undefined,
+          tags: task.tags,
+          createdAt: new Date(task.created_at).getTime()
+        }));
+        setTasks(mappedTasks);
+      }
+    } finally {
+      setLoadingTasks(false);
     }
-    setLoadingTasks(false);
   };
 
   const filteredTasks = useMemo(() => {
@@ -97,6 +110,15 @@ function App() {
   }, [filteredTasks]);
 
   const handleAddTask = async (taskData: Omit<Task, 'id' | 'createdAt'>) => {
+    const optimisticTask: Task = {
+      id: crypto.randomUUID(),
+      ...taskData,
+      createdAt: Date.now()
+    };
+
+    setTasks(prev => [optimisticTask, ...prev]);
+    setToast({ message: '任务已创建', type: 'created' });
+
     const { data, error } = await supabase
       .from('tasks')
       .insert({
@@ -122,23 +144,33 @@ function App() {
         createdAt: new Date(data.created_at).getTime()
       };
 
-      setTasks(prev => [newTask, ...prev]);
-      setToast({ message: '任务已创建', type: 'created' });
+      setTasks(prev => prev.map(t => t.id === optimisticTask.id ? newTask : t));
+    } else {
+      setTasks(prev => prev.filter(t => t.id !== optimisticTask.id));
+      setToast({ message: '创建失败', type: 'updated' });
     }
   };
 
   const handleDeleteTask = async (taskId: string) => {
+    const deletedTask = tasks.find(t => t.id === taskId);
+    setTasks(prev => prev.filter(task => task.id !== taskId));
+
     const { error } = await supabase
       .from('tasks')
       .delete()
       .eq('id', taskId);
 
-    if (!error) {
-      setTasks(prev => prev.filter(task => task.id !== taskId));
+    if (error && deletedTask) {
+      setTasks(prev => [...prev, deletedTask]);
+      setToast({ message: '删除失败', type: 'updated' });
     }
   };
 
   const handleUpdateTask = async (updatedTask: Task) => {
+    const oldTask = tasks.find(t => t.id === updatedTask.id);
+    setTasks(prev => prev.map(task => task.id === updatedTask.id ? updatedTask : task));
+    setToast({ message: '任务已更新', type: 'updated' });
+
     const { error } = await supabase
       .from('tasks')
       .update({
@@ -152,9 +184,9 @@ function App() {
       })
       .eq('id', updatedTask.id);
 
-    if (!error) {
-      setTasks(prev => prev.map(task => task.id === updatedTask.id ? updatedTask : task));
-      setToast({ message: '任务已更新', type: 'updated' });
+    if (error && oldTask) {
+      setTasks(prev => prev.map(task => task.id === updatedTask.id ? oldTask : task));
+      setToast({ message: '更新失败', type: 'updated' });
     }
   };
 
