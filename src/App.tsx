@@ -12,8 +12,9 @@ import { parseTaskIntent as parseTaskIntentGemini } from './services/geminiParse
 import { parseTaskIntent as parseTaskIntentLocal } from './services/semanticParser';
 import { supabase } from './lib/supabase';
 import { saveTasksToLocal, loadTasksFromLocal } from './storage';
-import { ListTodo, Search, ChevronDown } from 'lucide-react';
+import { ListTodo, Search, ChevronDown, Download } from 'lucide-react';
 import NetworkStatus from './components/NetworkStatus';
+import ImportExportModal from './components/ImportExportModal';
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -36,6 +37,7 @@ function App() {
   const [deleteConfirmData, setDeleteConfirmData] = useState<{ taskId: string; taskTitle: string } | null>(null);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
+  const [showImportExportModal, setShowImportExportModal] = useState(false);
   const lastScrollY = useRef(0);
   const scrollThreshold = 50;
 
@@ -505,6 +507,61 @@ function App() {
     setEditConfirmData(null);
   };
 
+  const handleImport = async (importedTasks: Task[], mode: 'merge' | 'replace') => {
+    try {
+      let newTasks: Task[];
+
+      if (mode === 'replace') {
+        newTasks = importedTasks;
+      } else {
+        const existingIds = new Set(tasks.map(t => t.id));
+        const uniqueImported = importedTasks.filter(t => !existingIds.has(t.id));
+        newTasks = [...tasks, ...uniqueImported];
+      }
+
+      if (!isOfflineMode) {
+        if (mode === 'replace') {
+          const { error: deleteError } = await supabase
+            .from('tasks')
+            .delete()
+            .neq('id', '00000000-0000-0000-0000-000000000000');
+
+          if (deleteError) throw deleteError;
+        }
+
+        for (const task of importedTasks) {
+          const { error } = await supabase
+            .from('tasks')
+            .upsert({
+              id: task.id,
+              title: task.title,
+              description: task.description,
+              status: task.status,
+              priority: task.priority,
+              due_date: task.dueDate ? new Date(task.dueDate).toISOString() : null,
+              tags: task.tags || [],
+              created_at: new Date(task.createdAt).toISOString(),
+            });
+
+          if (error) throw error;
+        }
+      }
+
+      setTasks(newTasks);
+      saveTasksToLocal(newTasks);
+
+      setToast({
+        message: mode === 'replace'
+          ? `已替换 ${importedTasks.length} 个任务`
+          : `已导入 ${importedTasks.filter(t => !tasks.find(et => et.id === t.id)).length} 个新任务`,
+        type: 'added'
+      });
+    } catch (error) {
+      console.error('[导入错误]', error);
+      setToast({ message: '导入失败', type: 'updated' });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 pb-32">
       <header className={`bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10 transition-transform duration-300 ${
@@ -518,26 +575,35 @@ function App() {
                 <h1 className="text-2xl font-bold text-gray-800">任务管理</h1>
               </div>
             </div>
-            <NetworkStatus
-              isOffline={isOfflineMode}
-              onReconnect={async () => {
-                console.log('[重新连接] 开始尝试重新连接...');
-                setToast({ message: '正在重新连接...', type: 'processing' });
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowImportExportModal(true)}
+                className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+              >
+                <Download size={16} />
+                <span className="hidden md:inline">导入/导出</span>
+              </button>
+              <NetworkStatus
+                isOffline={isOfflineMode}
+                onReconnect={async () => {
+                  console.log('[重新连接] 开始尝试重新连接...');
+                  setToast({ message: '正在重新连接...', type: 'processing' });
 
-                const wasOffline = isOfflineMode;
-                await loadTasks('reconnect');
+                  const wasOffline = isOfflineMode;
+                  await loadTasks('reconnect');
 
-                setTimeout(() => {
-                  if (!isOfflineMode && wasOffline) {
-                    console.log('[重新连接] ✓ 连接成功');
-                    setToast({ message: '已重新连接', type: 'updated' });
-                  } else if (isOfflineMode) {
-                    console.log('[重新连接] ✗ 连接失败，保持离线模式');
-                    setToast({ message: '无法连接到服务器，使用本地数据', type: 'updated' });
-                  }
-                }, 100);
-              }}
-            />
+                  setTimeout(() => {
+                    if (!isOfflineMode && wasOffline) {
+                      console.log('[重新连接] ✓ 连接成功');
+                      setToast({ message: '已重新连接', type: 'updated' });
+                    } else if (isOfflineMode) {
+                      console.log('[重新连接] ✗ 连接失败，保持离线模式');
+                      setToast({ message: '无法连接到服务器，使用本地数据', type: 'updated' });
+                    }
+                  }, 100);
+                }}
+              />
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -773,6 +839,13 @@ function App() {
           onClose={() => setToast(null)}
         />
       )}
+
+      <ImportExportModal
+        isOpen={showImportExportModal}
+        onClose={() => setShowImportExportModal(false)}
+        tasks={tasks}
+        onImport={handleImport}
+      />
     </div>
   );
 }
