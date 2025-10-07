@@ -288,9 +288,12 @@ function App() {
         console.log('[创建任务] 数据库离线，任务已保存到本地');
       } else {
         console.log('[创建任务] 回滚乐观更新');
-        const updatedTasks = tasks.filter(t => t.id !== optimisticTask.id);
-        setTasks(updatedTasks);
-        saveTasksToLocal(updatedTasks);
+        setTasks(currentTasks => {
+          const updatedTasks = currentTasks.filter(t => t.id !== optimisticTask.id);
+          console.log('[创建任务] 回滚后任务列表长度:', updatedTasks.length);
+          saveTasksToLocal(updatedTasks);
+          return updatedTasks;
+        });
         setToast({ message: `创建失败: ${result.error?.message}`, type: 'updated' });
       }
       console.log('=== [创建任务] 完成（失败）===');
@@ -300,10 +303,14 @@ function App() {
     if (result.data) {
       console.log('[创建任务] ✓ 成功，数据库ID:', result.data.id);
       console.log('[创建任务] 替换乐观任务ID:', optimisticTask.id, '-> ', result.data.id);
-      const updatedTasks = tasks.map(t => t.id === optimisticTask.id ? result.data : t);
-      console.log('[创建任务] 更新后任务列表长度:', updatedTasks.length);
-      setTasks(updatedTasks);
-      saveTasksToLocal(updatedTasks);
+
+      setTasks(currentTasks => {
+        const updatedTasks = currentTasks.map(t => t.id === optimisticTask.id ? result.data : t);
+        console.log('[创建任务] 更新后任务列表长度:', updatedTasks.length);
+        console.log('[创建任务] 找到并替换了乐观任务:', updatedTasks.some(t => t.id === result.data.id));
+        saveTasksToLocal(updatedTasks);
+        return updatedTasks;
+      });
 
       setHighlightedTaskId(result.data.id);
       setTimeout(() => {
@@ -320,15 +327,20 @@ function App() {
   const handleDeleteTask = async (taskId: string) => {
     console.log('=== [删除任务] 开始 ===');
     console.log('[删除任务] ID:', taskId);
-    console.log('[删除任务] 当前任务列表长度:', tasks.length);
 
-    const deletedTask = tasks.find(t => t.id === taskId);
-    console.log('[删除任务] 找到任务:', deletedTask ? deletedTask.title : '未找到');
+    let deletedTaskRef: Task | undefined;
 
-    const newTasks = tasks.filter(task => task.id !== taskId);
-    console.log('[删除任务] 乐观删除，新列表长度:', newTasks.length);
-    setTasks(newTasks);
-    saveTasksToLocal(newTasks);
+    setTasks(currentTasks => {
+      console.log('[删除任务] 当前任务列表长度:', currentTasks.length);
+      deletedTaskRef = currentTasks.find(t => t.id === taskId);
+      console.log('[删除任务] 找到任务:', deletedTaskRef ? deletedTaskRef.title : '未找到');
+
+      const newTasks = currentTasks.filter(task => task.id !== taskId);
+      console.log('[删除任务] 乐观删除，新列表长度:', newTasks.length);
+      saveTasksToLocal(newTasks);
+      return newTasks;
+    });
+
     setDeleteConfirmData(null);
 
     if (isOfflineMode) {
@@ -343,11 +355,13 @@ function App() {
     if (result.error || result.isOffline) {
       console.error('[删除任务] ❌ 失败:', result.error?.message);
 
-      if (deletedTask) {
+      if (deletedTaskRef) {
         console.log('[删除任务] 恢复已删除的任务');
-        const restoredTasks = [...tasks, deletedTask];
-        setTasks(restoredTasks);
-        saveTasksToLocal(restoredTasks);
+        setTasks(currentTasks => {
+          const restoredTasks = [...currentTasks, deletedTaskRef!];
+          saveTasksToLocal(restoredTasks);
+          return restoredTasks;
+        });
       }
 
       if (result.isOffline) {
@@ -373,15 +387,20 @@ function App() {
     console.log('=== [更新任务] 开始 ===');
     console.log('[更新任务] ID:', updatedTask.id);
     console.log('[更新任务] 更新数据:', JSON.stringify(updatedTask, null, 2));
-    console.log('[更新任务] 当前任务列表长度:', tasks.length);
 
-    const oldTask = tasks.find(t => t.id === updatedTask.id);
-    console.log('[更新任务] 找到原任务:', oldTask ? oldTask.title : '未找到');
+    let oldTaskRef: Task | undefined;
 
-    const updatedTasks = tasks.map(task => task.id === updatedTask.id ? updatedTask : task);
-    console.log('[更新任务] 乐观更新，列表长度:', updatedTasks.length);
-    setTasks(updatedTasks);
-    saveTasksToLocal(updatedTasks);
+    setTasks(currentTasks => {
+      console.log('[更新任务] 当前任务列表长度:', currentTasks.length);
+      oldTaskRef = currentTasks.find(t => t.id === updatedTask.id);
+      console.log('[更新任务] 找到原任务:', oldTaskRef ? oldTaskRef.title : '未找到');
+
+      const updatedTasks = currentTasks.map(task => task.id === updatedTask.id ? updatedTask : task);
+      console.log('[更新任务] 乐观更新，列表长度:', updatedTasks.length);
+      saveTasksToLocal(updatedTasks);
+      return updatedTasks;
+    });
+
     setToast({ message: '任务已更新', type: 'updated' });
 
     setHighlightedTaskId(updatedTask.id);
@@ -405,11 +424,13 @@ function App() {
     if (result.error || result.isOffline) {
       console.error('[更新任务] ❌ 失败:', result.error?.message);
 
-      if (oldTask) {
+      if (oldTaskRef) {
         console.log('[更新任务] 回滚到原任务');
-        const restoredTasks = tasks.map(task => task.id === updatedTask.id ? oldTask : task);
-        setTasks(restoredTasks);
-        saveTasksToLocal(restoredTasks);
+        setTasks(currentTasks => {
+          const restoredTasks = currentTasks.map(task => task.id === updatedTask.id ? oldTaskRef : task);
+          saveTasksToLocal(restoredTasks);
+          return restoredTasks;
+        });
       }
 
       if (result.isOffline) {
