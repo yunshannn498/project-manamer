@@ -29,40 +29,75 @@ function App() {
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
   useEffect(() => {
+    console.log('[初始化] Supabase URL:', import.meta.env.VITE_SUPABASE_URL || '使用默认值');
+    console.log('[初始化] 开始加载任务...');
+
     loadTasks();
 
+    console.log('[实时订阅] 设置任务变更监听...');
     const channel = supabase
       .channel('tasks-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
+        console.log('[实时订阅] 检测到变更:', payload);
         loadTasks();
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[实时订阅] 状态:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('[实时订阅] ✓ 已成功订阅任务变更');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('[实时订阅] ✗ 订阅失败');
+          setToast({ message: '实时同步连接失败', type: 'updated' });
+        } else if (status === 'TIMED_OUT') {
+          console.error('[实时订阅] ✗ 连接超时');
+        }
+      });
 
     return () => {
+      console.log('[实时订阅] 清理订阅...');
       supabase.removeChannel(channel);
     };
   }, []);
 
   const loadTasks = async () => {
     try {
+      console.log('[加载任务] 开始请求...', new Date().toISOString());
+
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && data) {
-        const mappedTasks: Task[] = data.map(task => ({
-          id: task.id,
-          title: task.title,
-          description: task.description,
-          status: task.status,
-          priority: task.priority,
-          dueDate: task.due_date ? new Date(task.due_date).getTime() : undefined,
-          tags: task.tags,
-          createdAt: new Date(task.created_at).getTime()
-        }));
-        setTasks(mappedTasks);
+      if (error) {
+        console.error('[加载任务] 数据库错误:', error);
+        setToast({ message: `加载失败: ${error.message}`, type: 'updated' });
+        return;
       }
+
+      if (!data) {
+        console.warn('[加载任务] 数据为空');
+        setTasks([]);
+        return;
+      }
+
+      console.log('[加载任务] 成功获取', data.length, '条任务');
+
+      const mappedTasks: Task[] = data.map(task => ({
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        dueDate: task.due_date ? new Date(task.due_date).getTime() : undefined,
+        tags: task.tags,
+        createdAt: new Date(task.created_at).getTime()
+      }));
+
+      setTasks(mappedTasks);
+      console.log('[加载任务] 状态已更新');
+    } catch (err) {
+      console.error('[加载任务] 异常:', err);
+      setToast({ message: '加载任务时发生错误', type: 'updated' });
     } finally {
       setLoadingTasks(false);
     }
@@ -90,7 +125,7 @@ function App() {
   }, [tasks, searchQuery, showCompleted, priorityFilter]);
 
   const sortedTasks = useMemo(() => {
-    return [...filteredTasks].sort((a, b) => {
+    const sorted = [...filteredTasks].sort((a, b) => {
       const aDueDate = a.dueDate ?? Infinity;
       const bDueDate = b.dueDate ?? Infinity;
 
@@ -107,7 +142,9 @@ function App() {
 
       return b.createdAt - a.createdAt;
     });
-  }, [filteredTasks]);
+    console.log('[任务过滤] 总任务数:', tasks.length, '过滤后:', filteredTasks.length, '排序后:', sorted.length);
+    return sorted;
+  }, [filteredTasks, tasks.length]);
 
   const handleAddTask = async (taskData: Omit<Task, 'id' | 'createdAt'>) => {
     const optimisticTask: Task = {

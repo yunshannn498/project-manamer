@@ -11,7 +11,7 @@ interface ParseResponse {
 }
 
 const GEMINI_API_KEY = 'AIzaSyDt75m63rOV4qAZAtX-MRypBEi_qrONM4o';
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
 
 export const parseTaskIntent = async (
   text: string,
