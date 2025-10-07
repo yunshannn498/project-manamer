@@ -34,6 +34,20 @@ function App() {
     console.log('[初始化] Supabase URL:', import.meta.env.VITE_SUPABASE_URL || '使用默认值');
     console.log('[初始化] 开始加载任务...');
 
+    const testConnection = async () => {
+      try {
+        const { data, error } = await supabase.from('tasks').select('count').limit(1);
+        if (error) {
+          console.error('[连接测试] 数据库连接失败:', error);
+        } else {
+          console.log('[连接测试] ✓ 数据库连接正常');
+        }
+      } catch (err) {
+        console.error('[连接测试] 连接异常:', err);
+      }
+    };
+
+    testConnection();
     loadTasks();
 
     console.log('[实时订阅] 设置任务变更监听...');
@@ -48,10 +62,9 @@ function App() {
         if (status === 'SUBSCRIBED') {
           console.log('[实时订阅] ✓ 已成功订阅任务变更');
         } else if (status === 'CHANNEL_ERROR') {
-          console.error('[实时订阅] ✗ 订阅失败');
-          setToast({ message: '实时同步连接失败', type: 'updated' });
+          console.warn('[实时订阅] ✗ 订阅失败（不影响基本功能）');
         } else if (status === 'TIMED_OUT') {
-          console.error('[实时订阅] ✗ 连接超时');
+          console.warn('[实时订阅] ✗ 连接超时（不影响基本功能）');
         }
       });
 
