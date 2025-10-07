@@ -32,11 +32,13 @@ function App() {
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const [deleteConfirmData, setDeleteConfirmData] = useState<{ taskId: string; taskTitle: string } | null>(null);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
   const lastScrollY = useRef(0);
   const scrollThreshold = 50;
 
   const loadTasksTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pendingOperationsRef = useRef<Set<string>>(new Set());
+  const taskRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   useEffect(() => {
     console.log('[初始化] Supabase URL:', import.meta.env.VITE_SUPABASE_URL || '使用默认值');
@@ -256,6 +258,16 @@ function App() {
     console.log(`[handleAddTask-${operationId}] ✓ 乐观更新完成，当前任务数:`, newTasks.length);
     setToast({ message: '任务已创建', type: 'created' });
 
+    setHighlightedTaskId(optimisticTask.id);
+    setTimeout(() => {
+      const element = taskRefs.current.get(optimisticTask.id);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+
+    setTimeout(() => setHighlightedTaskId(null), 2000);
+
     if (isOfflineMode) {
       console.log(`[handleAddTask-${operationId}] 离线模式，任务已保存到本地`);
       pendingOperationsRef.current.delete(operationId);
@@ -293,6 +305,16 @@ function App() {
       setTasks(updatedTasks);
       saveTasksToLocal(updatedTasks);
       console.log(`[handleAddTask-${operationId}] ✓ ID替换完成`);
+
+      setHighlightedTaskId(newTask.id);
+      setTimeout(() => {
+        const element = taskRefs.current.get(newTask.id);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+
+      setTimeout(() => setHighlightedTaskId(null), 2000);
     } else {
       console.error(`[handleAddTask-${operationId}] ✗ 数据库插入失败:`, error);
       const updatedTasks = tasks.filter(t => t.id !== optimisticTask.id);
@@ -590,13 +612,28 @@ function App() {
         ) : (
           <div className="space-y-4 md:space-y-3">
             {sortedTasks.map(task => (
-              <TaskCard
+              <div
                 key={task.id}
-                task={task}
-                onDelete={() => handleDeleteClick(task.id)}
-                onUpdate={handleUpdateTask}
-                onComplete={() => handleCompleteTask(task.id)}
-              />
+                ref={(el) => {
+                  if (el) {
+                    taskRefs.current.set(task.id, el);
+                  } else {
+                    taskRefs.current.delete(task.id);
+                  }
+                }}
+                className={`transition-all duration-500 ${
+                  highlightedTaskId === task.id
+                    ? 'ring-4 ring-blue-400 ring-opacity-50 rounded-lg scale-[1.02]'
+                    : ''
+                }`}
+              >
+                <TaskCard
+                  task={task}
+                  onDelete={() => handleDeleteClick(task.id)}
+                  onUpdate={handleUpdateTask}
+                  onComplete={() => handleCompleteTask(task.id)}
+                />
+              </div>
             ))}
           </div>
         )}
