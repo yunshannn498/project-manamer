@@ -375,6 +375,16 @@ function App() {
     saveTasksToLocal(updatedTasks);
     setToast({ message: '任务已更新', type: 'updated' });
 
+    // 高亮并滚动到更新的任务
+    setHighlightedTaskId(updatedTask.id);
+    setTimeout(() => {
+      const element = taskRefs.current.get(updatedTask.id);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+    setTimeout(() => setHighlightedTaskId(null), 2000);
+
     if (isOfflineMode) {
       console.log('[离线模式] 任务已保存到本地');
       return;
