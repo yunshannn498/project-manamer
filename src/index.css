@@ -16,3 +16,13 @@
 .animate-slideUp {
   animation: slideUp 0.3s ease-out;
 }
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}

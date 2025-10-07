@@ -22,7 +22,8 @@ export const TextInput = ({ onSubmit }: TextInputProps) => {
     }
   };
 
-  const startRecording = () => {
+  const startRecording = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       alert('您的浏览器不支持语音识别功能。请使用 Chrome、Edge 或 Safari 浏览器。');
       return;
@@ -65,7 +66,10 @@ export const TextInput = ({ onSubmit }: TextInputProps) => {
     recognitionRef.current = recognition;
   };
 
-  const stopRecording = () => {
+  const stopRecording = (e?: React.MouseEvent | React.TouchEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
     console.log('[语音输入-TextInput] stopRecording 被调用');
     console.log('[语音输入-TextInput] recordingText:', recordingText);
     console.log('[语音输入-TextInput] hasSubmittedRef.current:', hasSubmittedRef.current);
@@ -109,11 +113,19 @@ export const TextInput = ({ onSubmit }: TextInputProps) => {
               onMouseLeave={stopRecording}
               onTouchStart={startRecording}
               onTouchEnd={stopRecording}
-              className={`flex-1 rounded-lg font-medium transition-all min-h-[52px] md:min-h-0 text-base ${
+              onTouchCancel={stopRecording}
+              onContextMenu={(e) => e.preventDefault()}
+              className={`flex-1 rounded-lg font-medium transition-all min-h-[52px] md:min-h-0 text-base select-none touch-none ${
                 isRecording
                   ? 'bg-red-500 text-white scale-95'
                   : 'bg-blue-500 text-white hover:bg-blue-600 active:scale-95'
               }`}
+              style={{
+                WebkitUserSelect: 'none',
+                userSelect: 'none',
+                WebkitTouchCallout: 'none',
+                touchAction: 'none'
+              }}
             >
               {isRecording ? (recordingText || '松开发送...') : '按住说话'}
             </button>
