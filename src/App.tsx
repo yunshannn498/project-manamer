@@ -569,7 +569,7 @@ function App() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowImportExportModal(true)}
-                className="flex items-center gap-1.5 bg-gradient-to-r from-accent-100 to-accent-200 hover:from-accent-200 hover:to-accent-300 text-primary-700 px-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-300 shadow-md hover:shadow-lg hover:scale-105"
+                className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 px-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-300 border border-gray-200 hover:border-gray-300"
               >
                 <Download size={16} />
                 <span className="hidden md:inline">导入/导出</span>
