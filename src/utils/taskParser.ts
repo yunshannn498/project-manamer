@@ -1,4 +1,5 @@
 import { Task } from '../types';
+import { cleanTaskTitle, shouldUseCleanedTitle } from './titleCleaner';
 
 const parseDateTime = (text: string): number | undefined => {
   console.log('[parseDateTime] 输入文本:', text);
@@ -256,6 +257,15 @@ export const parseVoiceInput = (text: string): Omit<Task, 'id' | 'createdAt'> =>
   }
 
   title = title.replace(/^[，,、\s]+|[，,、\s]+$/g, '').trim();
+
+  const cleanResult = cleanTaskTitle(title);
+  console.log('[parseVoiceInput] Original title:', title);
+  console.log('[parseVoiceInput] Clean result:', cleanResult);
+
+  if (shouldUseCleanedTitle(cleanResult) && cleanResult.cleanTitle) {
+    title = cleanResult.cleanTitle;
+    console.log('[parseVoiceInput] Using cleaned title:', title);
+  }
 
   return {
     title: title || '新任务',
