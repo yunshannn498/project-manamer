@@ -3,9 +3,6 @@ import { Task } from './types';
 import { TaskCard } from './components/TaskCard';
 import { TextInput } from './components/TextInput';
 import { parseVoiceInput } from './utils/taskParser';
-import { findMatchingTasks } from './utils/taskMatcher';
-import { EditConfirmModal } from './components/EditConfirmModal';
-import TaskSelectionModal from './components/TaskSelectionModal';
 import DeleteConfirmModal from './components/DeleteConfirmModal';
 import Toast, { ToastType } from './components/Toast';
 import { parseTaskIntent as parseTaskIntentGemini } from './services/geminiParser';
@@ -29,14 +26,6 @@ function App() {
   const [showOwnerMenu, setShowOwnerMenu] = useState(false);
   const [showDateMenu, setShowDateMenu] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
-  const [editConfirmData, setEditConfirmData] = useState<{
-    voiceText: string;
-    matches: ReturnType<typeof findMatchingTasks>;
-  } | null>(null);
-  const [taskSelectionData, setTaskSelectionData] = useState<{
-    tasks: Task[];
-    updates: Partial<Task>;
-  } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const [deleteConfirmData, setDeleteConfirmData] = useState<{ taskId: string; taskTitle: string } | null>(null);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
@@ -487,74 +476,23 @@ function App() {
 
     setToast({ message: '正在处理...', type: 'processing' });
 
-    console.log('=== AI 语义分析 ===');
-    console.log('原始输入:', text);
-
     let result;
     try {
       console.log('尝试使用 Gemini AI...');
       result = await parseTaskIntentGemini(text, tasks);
-      if (result.confidence === 0) {
-        throw new Error('Gemini returned low confidence, fallback to local');
-      }
-      console.log('✓ Gemini AI 分析成功');
+      console.log('✓ AI 分析成功');
     } catch (error) {
-      console.log('Gemini 失败，使用本地解析器');
+      console.log('AI 失败，使用本地解析器');
       result = await parseTaskIntentLocal(text, tasks);
     }
-    console.log('AI 分析结果:', result);
+    console.log('分析结果:', result);
 
-    if (result.intent === 'edit' && result.updates) {
-      console.log('[编辑判断] 检测到编辑意图');
-      console.log('[编辑判断] needsConfirmation:', result.needsConfirmation);
-      console.log('[编辑判断] taskToEdit:', result.taskToEdit);
-      console.log('[编辑判断] updates:', result.updates);
-
-      if (result.needsConfirmation && result.suggestedTasks) {
-        console.log('[编辑判断] 需要用户选择任务，显示选择弹窗');
-        setTaskSelectionData({
-          tasks: result.suggestedTasks,
-          updates: result.updates
-        });
-      } else if (result.taskToEdit) {
-        const task = tasks.find(t => t.id === result.taskToEdit);
-        console.log('[编辑判断] 查找任务结果:', task ? `找到: ${task.title}` : '未找到');
-        if (task) {
-          console.log('[编辑判断] 执行编辑操作，更新内容:', result.updates);
-          handleUpdateTask({
-            ...task,
-            ...result.updates
-          });
-        } else {
-          console.log('[编辑判断] 未找到要编辑的任务，创建新任务');
-          const taskData = result.newTask || parseVoiceInput(text);
-          if (taskData.title) {
-            handleAddTask(taskData as Omit<Task, 'id' | 'createdAt'>);
-          }
-        }
-      } else {
-        console.log('[编辑判断] ⚠️ 编辑意图但没有taskToEdit和needsConfirmation，创建新任务');
-        const taskData = result.newTask || parseVoiceInput(text);
-        if (taskData.title) {
-          handleAddTask(taskData as Omit<Task, 'id' | 'createdAt'>);
-        }
-      }
-    } else {
-      console.log('[编辑判断] 创建新任务意图');
-      const taskData = result.newTask || parseVoiceInput(text);
-      if (taskData.title) {
-        handleAddTask(taskData as Omit<Task, 'id' | 'createdAt'>);
-      }
+    const taskData = result.newTask || parseVoiceInput(text);
+    if (taskData.title) {
+      handleAddTask(taskData as Omit<Task, 'id' | 'createdAt'>);
     }
   };
 
-  const handleEditConfirm = (taskId: string, updates: Partial<Task>) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (task) {
-      handleUpdateTask({ ...task, ...updates });
-    }
-    setEditConfirmData(null);
-  };
 
   const handleImport = async (importedTasks: Task[], mode: 'merge' | 'replace') => {
     try {
@@ -951,31 +889,6 @@ function App() {
       </main>
 
       <TextInput onSubmit={handleTextSubmit} />
-
-      {editConfirmData && (
-        <EditConfirmModal
-          voiceText={editConfirmData.voiceText}
-          matches={editConfirmData.matches}
-          onConfirm={handleEditConfirm}
-          onCancel={() => setEditConfirmData(null)}
-        />
-      )}
-
-      {taskSelectionData && (
-        <TaskSelectionModal
-          isOpen={true}
-          tasks={taskSelectionData.tasks}
-          updates={taskSelectionData.updates}
-          onSelect={(taskId) => {
-            const task = tasks.find(t => t.id === taskId);
-            if (task) {
-              handleUpdateTask({ ...task, ...taskSelectionData.updates });
-            }
-            setTaskSelectionData(null);
-          }}
-          onCancel={() => setTaskSelectionData(null)}
-        />
-      )}
 
       {deleteConfirmData && (
         <DeleteConfirmModal
