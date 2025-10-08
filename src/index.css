@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  body {
+    @apply bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50;
+  }
+}
+
 @keyframes slideUp {
   from {
     opacity: 0;
@@ -44,6 +50,26 @@
   }
 }
 
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+}
+
 * {
   -webkit-tap-highlight-color: transparent;
 }
@@ -52,4 +78,10 @@ button {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+}
+
+.glass-effect {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }

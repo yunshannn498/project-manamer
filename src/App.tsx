@@ -552,22 +552,24 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 pb-32">
-      <header className={`bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10 transition-transform duration-300 ${
+    <div className="min-h-screen pb-32">
+      <header className={`glass-effect shadow-lg border-b-2 border-primary-200 sticky top-0 z-10 transition-transform duration-300 ${
         isHeaderVisible ? 'translate-y-0' : '-translate-y-full'
       }`}>
         <div className="max-w-4xl mx-auto px-4 py-5 md:px-6 md:py-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <ListTodo size={28} className="text-blue-500" />
+              <div className="bg-gradient-to-br from-primary-400 to-primary-600 p-2 rounded-2xl shadow-lg transform hover:rotate-12 transition-transform duration-300">
+                <ListTodo size={28} className="text-white" />
+              </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-800">米米任务</h1>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-primary-600 to-primary-500 bg-clip-text text-transparent">米米任务</h1>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowImportExportModal(true)}
-                className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                className="flex items-center gap-1.5 bg-gradient-to-r from-accent-100 to-accent-200 hover:from-accent-200 hover:to-accent-300 text-primary-700 px-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-300 shadow-md hover:shadow-lg hover:scale-105"
               >
                 <Download size={16} />
                 <span className="hidden md:inline">导入/导出</span>
@@ -596,34 +598,34 @@ function App() {
           </div>
 
           <div className="space-y-3">
-            <div className="relative">
-              <Search size={22} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 md:w-5 md:h-5" />
+            <div className="relative group">
+              <Search size={22} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary-400 md:w-5 md:h-5 transition-colors group-focus-within:text-primary-600" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="搜索任务..."
-                className="w-full pl-10 pr-4 py-3 md:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                className="w-full pl-10 pr-4 py-3 md:py-2 border-2 border-primary-200 rounded-2xl focus:ring-4 focus:ring-primary-200 focus:border-primary-500 text-base transition-all duration-300 bg-white shadow-md focus:shadow-lg"
               />
             </div>
 
             <div className="flex gap-3 md:gap-2">
               <button
                 onClick={() => setShowCompleted(false)}
-                className={`flex-1 py-3 md:py-2 px-4 rounded-lg transition-colors text-base active:scale-95 ${
+                className={`flex-1 py-3 md:py-2 px-4 rounded-2xl transition-all duration-300 text-base font-semibold active:scale-95 shadow-md hover:shadow-lg ${
                   !showCompleted
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-primary-300'
+                    : 'bg-white text-gray-600 hover:bg-gradient-to-r hover:from-orange-50 hover:to-amber-50'
                 }`}
               >
                 进行中
               </button>
               <button
                 onClick={() => setShowCompleted(true)}
-                className={`flex-1 py-3 md:py-2 px-4 rounded-lg transition-colors text-base active:scale-95 ${
+                className={`flex-1 py-3 md:py-2 px-4 rounded-2xl transition-all duration-300 text-base font-semibold active:scale-95 shadow-md hover:shadow-lg ${
                   showCompleted
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-primary-300'
+                    : 'bg-white text-gray-600 hover:bg-gradient-to-r hover:from-orange-50 hover:to-amber-50'
                 }`}
               >
                 已完成
@@ -637,10 +639,10 @@ function App() {
                   setPriorityFilter('all');
                   setOwnerFilter('all');
                 }}
-                className={`flex-1 py-2.5 md:py-1.5 px-3 rounded-lg text-base md:text-sm transition-colors active:scale-95 ${
+                className={`flex-1 py-2.5 md:py-1.5 px-3 rounded-xl text-base md:text-sm transition-all duration-300 active:scale-95 font-medium shadow-sm hover:shadow-md ${
                   dateFilter === 'all' && priorityFilter === 'all' && ownerFilter === 'all'
-                    ? 'bg-gray-700 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-gradient-to-r from-gray-700 to-gray-800 text-white'
+                    : 'bg-white text-gray-600 hover:bg-gradient-to-r hover:from-orange-50 hover:to-amber-50'
                 }`}
               >
                 全部
@@ -649,10 +651,10 @@ function App() {
               <div className="relative flex-1">
                 <button
                   onClick={() => setShowPriorityMenu(!showPriorityMenu)}
-                  className={`w-full py-2.5 md:py-1.5 px-3 rounded-lg text-base md:text-sm transition-colors active:scale-95 flex items-center justify-center gap-1 ${
+                  className={`w-full py-2.5 md:py-1.5 px-3 rounded-xl text-base md:text-sm transition-all duration-300 active:scale-95 flex items-center justify-center gap-1 font-medium shadow-sm hover:shadow-md ${
                     priorityFilter !== 'all'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gradient-to-r hover:from-orange-50 hover:to-amber-50'
                   }`}
                 >
                   <span>{priorityFilter === 'all' ? '优先级' : priorityFilter === 'high' ? '高优先级' : priorityFilter === 'medium' ? '中优先级' : '低优先级'}</span>
@@ -667,13 +669,13 @@ function App() {
                       className="fixed inset-0 z-30"
                       onClick={() => setShowPriorityMenu(false)}
                     />
-                    <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-40">
+                    <div className="absolute top-full mt-1 left-0 right-0 bg-white border-2 border-primary-200 rounded-2xl shadow-xl overflow-hidden z-40 animate-slide-up">
                       <button
                         onClick={() => {
                           setPriorityFilter('all');
                           setShowPriorityMenu(false);
                         }}
-                        className="w-full px-3 py-2 text-left hover:bg-gray-50 text-sm text-gray-700 transition-colors"
+                        className="w-full px-3 py-2 text-left hover:bg-orange-50 text-sm text-gray-700 transition-all duration-200 font-medium"
                       >
                         全部优先级
                       </button>
@@ -712,10 +714,10 @@ function App() {
               <div className="relative flex-1">
                 <button
                   onClick={() => setShowOwnerMenu(!showOwnerMenu)}
-                  className={`w-full py-2.5 md:py-1.5 px-3 rounded-lg text-base md:text-sm transition-colors active:scale-95 flex items-center justify-center gap-1 ${
+                  className={`w-full py-2.5 md:py-1.5 px-3 rounded-xl text-base md:text-sm transition-all duration-300 active:scale-95 flex items-center justify-center gap-1 font-medium shadow-sm hover:shadow-md ${
                     ownerFilter !== 'all'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gradient-to-r hover:from-orange-50 hover:to-amber-50'
                   }`}
                 >
                   <span>{ownerFilter === 'all' ? '负责人' : ownerFilter}</span>
@@ -730,13 +732,13 @@ function App() {
                       className="fixed inset-0 z-30"
                       onClick={() => setShowOwnerMenu(false)}
                     />
-                    <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-40">
+                    <div className="absolute top-full mt-1 left-0 right-0 bg-white border-2 border-primary-200 rounded-2xl shadow-xl overflow-hidden z-40 animate-slide-up">
                       <button
                         onClick={() => {
                           setOwnerFilter('all');
                           setShowOwnerMenu(false);
                         }}
-                        className="w-full px-3 py-2 text-left hover:bg-gray-50 text-sm text-gray-700 transition-colors"
+                        className="w-full px-3 py-2 text-left hover:bg-orange-50 text-sm text-gray-700 transition-all duration-200 font-medium"
                       >
                         全部负责人
                       </button>
@@ -745,7 +747,7 @@ function App() {
                           setOwnerFilter('阿伟');
                           setShowOwnerMenu(false);
                         }}
-                        className="w-full px-3 py-2 text-left hover:bg-blue-50 text-sm text-blue-600 transition-colors"
+                        className="w-full px-3 py-2 text-left hover:bg-primary-50 text-sm text-primary-600 transition-all duration-200 font-medium"
                       >
                         阿伟
                       </button>
@@ -754,7 +756,7 @@ function App() {
                           setOwnerFilter('choco');
                           setShowOwnerMenu(false);
                         }}
-                        className="w-full px-3 py-2 text-left hover:bg-blue-50 text-sm text-blue-600 transition-colors"
+                        className="w-full px-3 py-2 text-left hover:bg-primary-50 text-sm text-primary-600 transition-all duration-200 font-medium"
                       >
                         choco
                       </button>
@@ -763,7 +765,7 @@ function App() {
                           setOwnerFilter('05');
                           setShowOwnerMenu(false);
                         }}
-                        className="w-full px-3 py-2 text-left hover:bg-blue-50 text-sm text-blue-600 transition-colors"
+                        className="w-full px-3 py-2 text-left hover:bg-primary-50 text-sm text-primary-600 transition-all duration-200 font-medium"
                       >
                         05
                       </button>
@@ -775,10 +777,10 @@ function App() {
               <div className="relative flex-1">
                 <button
                   onClick={() => setShowDateMenu(!showDateMenu)}
-                  className={`w-full py-2.5 md:py-1.5 px-3 rounded-lg text-base md:text-sm transition-colors active:scale-95 flex items-center justify-center gap-1 ${
+                  className={`w-full py-2.5 md:py-1.5 px-3 rounded-xl text-base md:text-sm transition-all duration-300 active:scale-95 flex items-center justify-center gap-1 font-medium shadow-sm hover:shadow-md ${
                     dateFilter !== 'all'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gradient-to-r hover:from-orange-50 hover:to-amber-50'
                   }`}
                 >
                   <span>
@@ -797,13 +799,13 @@ function App() {
                       className="fixed inset-0 z-30"
                       onClick={() => setShowDateMenu(false)}
                     />
-                    <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-40">
+                    <div className="absolute top-full mt-1 left-0 right-0 bg-white border-2 border-primary-200 rounded-2xl shadow-xl overflow-hidden z-40 animate-slide-up">
                       <button
                         onClick={() => {
                           setDateFilter('all');
                           setShowDateMenu(false);
                         }}
-                        className="w-full px-3 py-2 text-left hover:bg-gray-50 text-sm text-gray-700 transition-colors"
+                        className="w-full px-3 py-2 text-left hover:bg-orange-50 text-sm text-gray-700 transition-all duration-200 font-medium"
                       >
                         全部时间
                       </button>
@@ -812,7 +814,7 @@ function App() {
                           setDateFilter('today');
                           setShowDateMenu(false);
                         }}
-                        className="w-full px-3 py-2 text-left hover:bg-blue-50 text-sm text-blue-600 transition-colors"
+                        className="w-full px-3 py-2 text-left hover:bg-primary-50 text-sm text-primary-600 transition-all duration-200 font-medium"
                       >
                         今天
                       </button>
@@ -821,7 +823,7 @@ function App() {
                           setDateFilter('thisWeek');
                           setShowDateMenu(false);
                         }}
-                        className="w-full px-3 py-2 text-left hover:bg-blue-50 text-sm text-blue-600 transition-colors"
+                        className="w-full px-3 py-2 text-left hover:bg-primary-50 text-sm text-primary-600 transition-all duration-200 font-medium"
                       >
                         本周
                       </button>
@@ -830,7 +832,7 @@ function App() {
                           setDateFilter('noDate');
                           setShowDateMenu(false);
                         }}
-                        className="w-full px-3 py-2 text-left hover:bg-blue-50 text-sm text-blue-600 transition-colors"
+                        className="w-full px-3 py-2 text-left hover:bg-primary-50 text-sm text-primary-600 transition-all duration-200 font-medium"
                       >
                         无时间
                       </button>
@@ -845,12 +847,21 @@ function App() {
 
       <main className="max-w-4xl mx-auto px-6 py-6">
         {loadingTasks ? (
-          <div className="flex justify-center py-16">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <div className="flex flex-col items-center justify-center py-16 gap-4">
+            <div className="relative">
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary-200"></div>
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary-500 border-t-transparent absolute top-0 left-0"></div>
+            </div>
+            <p className="text-primary-600 font-medium animate-pulse">加载中...</p>
           </div>
         ) : sortedTasks.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-gray-500 text-base">
+          <div className="text-center py-16 animate-fade-in">
+            <div className="mb-4">
+              <div className="inline-block p-6 bg-gradient-to-br from-primary-100 to-accent-100 rounded-full mb-4 shadow-lg">
+                <ListTodo size={48} className="text-primary-500" />
+              </div>
+            </div>
+            <p className="text-gray-600 text-lg font-medium">
               {searchQuery
                 ? '未找到匹配的任务'
                 : showCompleted
@@ -872,7 +883,7 @@ function App() {
                 }}
                 className={`transition-all duration-500 ${
                   highlightedTaskId === task.id
-                    ? 'ring-4 ring-blue-400 ring-opacity-50 rounded-lg scale-[1.02]'
+                    ? 'ring-4 ring-primary-400 ring-opacity-50 rounded-2xl scale-[1.02] shadow-xl'
                     : ''
                 }`}
               >

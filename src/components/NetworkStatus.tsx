@@ -49,19 +49,19 @@ export default function NetworkStatus({ isOffline, onReconnect }: NetworkStatusP
     <div className="flex items-center gap-2">
       {effectiveOffline ? (
         <>
-          <div className="hidden md:flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 px-3 py-1.5 rounded-lg text-sm font-medium">
+          <div className="hidden md:flex items-center gap-2 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300 text-amber-700 px-3 py-1.5 rounded-xl text-sm font-semibold shadow-sm">
             <WifiOff size={16} className="flex-shrink-0" />
             <span>离线</span>
           </div>
 
-          <div className="md:hidden flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-700 px-2 py-1.5 rounded-lg">
+          <div className="md:hidden flex items-center gap-1 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300 text-amber-700 px-2 py-1.5 rounded-xl shadow-sm">
             <WifiOff size={14} />
           </div>
 
           <button
             onClick={handleReconnect}
             disabled={isReconnecting}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+            className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white px-3 py-1.5 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 shadow-md hover:shadow-lg"
           >
             <RefreshCw size={14} className={`flex-shrink-0 ${isReconnecting ? 'animate-spin' : ''}`} />
             <span className="hidden md:inline">重新连接</span>
@@ -69,12 +69,12 @@ export default function NetworkStatus({ isOffline, onReconnect }: NetworkStatusP
         </>
       ) : (
         <>
-          <div className="hidden md:flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 px-3 py-1.5 rounded-lg text-sm font-medium">
+          <div className="hidden md:flex items-center gap-2 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 text-green-700 px-3 py-1.5 rounded-xl text-sm font-semibold shadow-sm">
             <Wifi size={16} className="flex-shrink-0" />
             <span>在线</span>
           </div>
 
-          <div className="md:hidden flex items-center gap-1 bg-green-50 border border-green-200 text-green-700 px-2 py-1.5 rounded-lg">
+          <div className="md:hidden flex items-center gap-1 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 text-green-700 px-2 py-1.5 rounded-xl shadow-sm">
             <Wifi size={14} />
           </div>
         </>

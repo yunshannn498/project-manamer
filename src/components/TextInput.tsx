@@ -188,15 +188,15 @@ export const TextInput = ({ onSubmit }: TextInputProps) => {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-20">
+    <div className="fixed bottom-0 left-0 right-0 glass-effect border-t-2 border-primary-200 shadow-2xl z-20">
       <div className="max-w-4xl mx-auto px-4 py-5 md:px-6 md:py-4">
         <div className="flex gap-4 md:gap-3 items-stretch">
           <button
             onClick={() => setIsVoiceMode(!isVoiceMode)}
-            className={`p-4 md:p-3 rounded-lg transition-colors active:scale-95 ${
+            className={`p-4 md:p-3 rounded-2xl transition-all duration-300 active:scale-95 shadow-lg hover:shadow-xl ${
               isVoiceMode
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white'
+                : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600 hover:from-orange-50 hover:to-amber-50 hover:text-primary-600'
             }`}
             title={isVoiceMode ? '切换到文字输入' : '切换到语音输入'}
           >
@@ -211,12 +211,12 @@ export const TextInput = ({ onSubmit }: TextInputProps) => {
               onTouchEnd={stopRecording}
               onTouchCancel={stopRecording}
               onContextMenu={(e) => e.preventDefault()}
-              className={`flex-1 rounded-lg font-medium transition-all min-h-[52px] md:min-h-0 text-base select-none touch-none ${
+              className={`flex-1 rounded-2xl font-semibold transition-all min-h-[52px] md:min-h-0 text-base select-none touch-none shadow-lg ${
                 isRecording
                   ? recordingStarted
-                    ? 'bg-red-500 text-white scale-95'
-                    : 'bg-orange-500 text-white scale-95 animate-pulse'
-                  : 'bg-blue-500 text-white hover:bg-blue-600 active:scale-95'
+                    ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white scale-95 shadow-red-300'
+                    : 'bg-gradient-to-r from-primary-500 to-primary-600 text-white scale-95 animate-pulse shadow-primary-300'
+                  : 'bg-gradient-to-r from-primary-500 to-primary-600 text-white hover:from-primary-600 hover:to-primary-700 active:scale-95 hover:shadow-xl shadow-primary-300'
               }`}
               style={{
                 WebkitUserSelect: 'none',
@@ -239,12 +239,12 @@ export const TextInput = ({ onSubmit }: TextInputProps) => {
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder="输入任务内容，例如：明天完成设计稿，高优先级..."
-                className="flex-1 px-4 py-4 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 placeholder-gray-400 text-base"
+                className="flex-1 px-4 py-4 md:py-3 border-2 border-primary-200 rounded-2xl focus:ring-4 focus:ring-primary-200 focus:border-primary-500 text-gray-800 placeholder-gray-400 text-base transition-all duration-300 shadow-md focus:shadow-lg"
               />
               <button
                 type="submit"
                 disabled={!text.trim()}
-                className="bg-blue-500 text-white p-4 md:p-3 rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed active:scale-95"
+                className="bg-gradient-to-r from-primary-500 to-primary-600 text-white p-4 md:p-3 rounded-2xl hover:from-primary-600 hover:to-primary-700 transition-all duration-300 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed active:scale-95 shadow-lg hover:shadow-xl disabled:shadow-none"
               >
                 <Send size={24} className="md:w-5 md:h-5" />
               </button>
@@ -252,10 +252,10 @@ export const TextInput = ({ onSubmit }: TextInputProps) => {
           )}
         </div>
 
-        <p className="text-xs md:text-xs text-sm text-gray-500 mt-2">
+        <p className="text-xs md:text-xs text-sm text-gray-600 mt-2 font-medium">
           {isVoiceMode
-            ? '按住按钮说话，松开自动发送'
-            : '提示：可以说明优先级（紧急/重要/普通）、时间（明天/下周）、添加描述等'}
+            ? '按住按钮说话，松开自动发送 🎙️'
+            : '提示：可以说明优先级（紧急/重要/普通）、时间（明天/下周）、添加描述等 ✨'}
         </p>
       </div>
     </div>
