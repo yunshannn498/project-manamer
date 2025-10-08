@@ -262,17 +262,18 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
       >
         <div className="flex justify-between items-start gap-2 mb-2">
           <h4 className="font-medium text-gray-800 flex-1 text-lg md:text-base">{task.title}</h4>
-          <div className="flex gap-2 md:gap-1">
+          <div className="flex gap-3 md:gap-2">
             {task.status !== 'done' && onComplete && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onComplete();
                 }}
-                className="text-gray-400 hover:text-green-500 transition-colors p-2 md:p-0 active:scale-95"
+                className="flex items-center justify-center min-w-[44px] min-h-[44px] md:min-w-[32px] md:min-h-[32px] text-gray-400 hover:text-green-500 hover:bg-green-50 md:hover:bg-green-100 rounded-lg md:rounded transition-all active:scale-90 active:bg-green-100"
                 title="标记为完成"
+                aria-label="标记为完成"
               >
-                <CheckCircle2 size={20} className="md:w-4 md:h-4" />
+                <CheckCircle2 size={24} className="md:w-5 md:h-5" />
               </button>
             )}
             <button
@@ -280,9 +281,10 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
                 e.stopPropagation();
                 onDelete();
               }}
-              className="text-gray-400 hover:text-red-500 transition-colors p-2 md:p-0 active:scale-95"
+              className="flex items-center justify-center min-w-[44px] min-h-[44px] md:min-w-[32px] md:min-h-[32px] text-gray-400 hover:text-red-500 hover:bg-red-50 md:hover:bg-red-100 rounded-lg md:rounded transition-all active:scale-90 active:bg-red-100"
+              aria-label="删除任务"
             >
-              <X size={20} className="md:w-4 md:h-4" />
+              <X size={24} className="md:w-5 md:h-5" />
             </button>
           </div>
         </div>
