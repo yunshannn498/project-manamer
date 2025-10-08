@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Send, Keyboard, Mic } from 'lucide-react';
 
 interface TextInputProps {
@@ -11,8 +11,26 @@ export const TextInput = ({ onSubmit }: TextInputProps) => {
   const [isVoiceMode, setIsVoiceMode] = useState(isMobile);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingText, setRecordingText] = useState('');
+  const [recordingStarted, setRecordingStarted] = useState(false);
   const recognitionRef = useRef<any>(null);
   const hasSubmittedRef = useRef(false);
+  const isStoppingRef = useRef(false);
+  const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (error) {
+          console.error('[语音输入] 清理时停止录音失败:', error);
+        }
+      }
+      if (recordingTimeoutRef.current) {
+        clearTimeout(recordingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,22 +42,42 @@ export const TextInput = ({ onSubmit }: TextInputProps) => {
 
   const startRecording = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
+
+    if (isRecording || isStoppingRef.current) {
+      console.log('[语音输入] 已在录音中或正在停止，忽略启动请求');
+      return;
+    }
+
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       alert('您的浏览器不支持语音识别功能。请使用 Chrome、Edge 或 Safari 浏览器。');
       return;
     }
 
+    console.log('[语音输入] 开始录音');
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
 
     recognition.lang = 'zh-CN';
-    recognition.continuous = true;
+    recognition.continuous = false;
     recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
+      console.log('[语音输入] 录音已开始');
       setIsRecording(true);
+      setRecordingStarted(true);
       setRecordingText('');
       hasSubmittedRef.current = false;
+      isStoppingRef.current = false;
+
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50);
+      }
+
+      recordingTimeoutRef.current = setTimeout(() => {
+        console.log('[语音输入] 录音超时（60秒），自动停止');
+        stopRecording();
+      }, 60000);
     };
 
     recognition.onresult = (event: any) => {
@@ -49,45 +87,104 @@ export const TextInput = ({ onSubmit }: TextInputProps) => {
         transcript += event.results[i][0].transcript;
       }
 
+      console.log('[语音输入] 识别结果:', transcript);
       setRecordingText(transcript);
     };
 
     recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error);
+      console.error('[语音输入] 识别错误:', event.error);
+
+      if (recordingTimeoutRef.current) {
+        clearTimeout(recordingTimeoutRef.current);
+        recordingTimeoutRef.current = null;
+      }
+
+      if (event.error === 'no-speech') {
+        console.log('[语音输入] 未检测到语音');
+      } else if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+        alert('麦克风权限被拒绝，请在浏览器设置中允许使用麦克风');
+      } else if (event.error !== 'aborted') {
+        console.log('[语音输入] 识别失败，请重试');
+      }
+
       setIsRecording(false);
+      setRecordingStarted(false);
       setRecordingText('');
+      recognitionRef.current = null;
+      isStoppingRef.current = false;
     };
 
     recognition.onend = () => {
+      console.log('[语音输入] 录音结束');
+      if (recordingTimeoutRef.current) {
+        clearTimeout(recordingTimeoutRef.current);
+        recordingTimeoutRef.current = null;
+      }
       setIsRecording(false);
+      setRecordingStarted(false);
+      isStoppingRef.current = false;
     };
 
-    recognition.start();
-    recognitionRef.current = recognition;
+    try {
+      recognition.start();
+      recognitionRef.current = recognition;
+    } catch (error) {
+      console.error('[语音输入] 启动失败:', error);
+      setIsRecording(false);
+      setRecordingStarted(false);
+      recognitionRef.current = null;
+      isStoppingRef.current = false;
+    }
   };
 
   const stopRecording = (e?: React.MouseEvent | React.TouchEvent) => {
     if (e) {
       e.preventDefault();
     }
-    console.log('[语音输入-TextInput] stopRecording 被调用');
-    console.log('[语音输入-TextInput] recordingText:', recordingText);
-    console.log('[语音输入-TextInput] hasSubmittedRef.current:', hasSubmittedRef.current);
+
+    if (!recognitionRef.current || isStoppingRef.current) {
+      console.log('[语音输入] 无需停止：', !recognitionRef.current ? '未在录音' : '正在停止中');
+      return;
+    }
+
+    console.log('[语音输入] stopRecording 被调用');
+    console.log('[语音输入] recordingText:', recordingText);
+    console.log('[语音输入] hasSubmittedRef.current:', hasSubmittedRef.current);
+
+    isStoppingRef.current = true;
+
+    if (recordingTimeoutRef.current) {
+      clearTimeout(recordingTimeoutRef.current);
+      recordingTimeoutRef.current = null;
+    }
 
     if (recognitionRef.current) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch (error) {
+        console.error('[语音输入] 停止录音失败:', error);
+      }
     }
 
-    if (recordingText.trim() && !hasSubmittedRef.current) {
-      console.log('[语音输入-TextInput] ✓ 提交语音文本:', recordingText.trim());
-      hasSubmittedRef.current = true;
-      onSubmit(recordingText.trim());
-    } else {
-      console.log('[语音输入-TextInput] ✗ 不提交，原因:', !recordingText.trim() ? '文本为空' : '已提交过');
+    if ('vibrate' in navigator) {
+      navigator.vibrate(30);
     }
 
-    setIsRecording(false);
-    setRecordingText('');
+    setTimeout(() => {
+      const finalText = recordingText.trim();
+
+      if (finalText && !hasSubmittedRef.current) {
+        console.log('[语音输入] ✓ 提交语音文本:', finalText);
+        hasSubmittedRef.current = true;
+        onSubmit(finalText);
+      } else {
+        console.log('[语音输入] ✗ 不提交，原因:', !finalText ? '文本为空' : '已提交过');
+      }
+
+      setRecordingText('');
+      recognitionRef.current = null;
+      isStoppingRef.current = false;
+    }, 300);
   };
 
   return (
@@ -110,14 +207,15 @@ export const TextInput = ({ onSubmit }: TextInputProps) => {
             <button
               onMouseDown={startRecording}
               onMouseUp={stopRecording}
-              onMouseLeave={stopRecording}
               onTouchStart={startRecording}
               onTouchEnd={stopRecording}
               onTouchCancel={stopRecording}
               onContextMenu={(e) => e.preventDefault()}
               className={`flex-1 rounded-lg font-medium transition-all min-h-[52px] md:min-h-0 text-base select-none touch-none ${
                 isRecording
-                  ? 'bg-red-500 text-white scale-95'
+                  ? recordingStarted
+                    ? 'bg-red-500 text-white scale-95'
+                    : 'bg-orange-500 text-white scale-95 animate-pulse'
                   : 'bg-blue-500 text-white hover:bg-blue-600 active:scale-95'
               }`}
               style={{
@@ -127,7 +225,12 @@ export const TextInput = ({ onSubmit }: TextInputProps) => {
                 touchAction: 'none'
               }}
             >
-              {isRecording ? (recordingText || '松开发送...') : '按住说话'}
+              {isRecording
+                ? recordingStarted
+                  ? (recordingText || '松开发送...')
+                  : '正在启动...'
+                : '按住说话'
+              }
             </button>
           ) : (
             <form onSubmit={handleSubmit} className="flex-1 flex gap-4 md:gap-3">
