@@ -623,7 +623,7 @@ function App() {
             <div className="flex items-center gap-3">
               <ListTodo size={28} className="text-blue-500" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-800">任务管理</h1>
+                <h1 className="text-2xl font-bold text-gray-800">米米任务</h1>
               </div>
             </div>
             <div className="flex items-center gap-2">
