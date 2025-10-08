@@ -664,10 +664,10 @@ function App() {
                 {showPriorityMenu && (
                   <>
                     <div
-                      className="fixed inset-0 z-10"
+                      className="fixed inset-0 z-30"
                       onClick={() => setShowPriorityMenu(false)}
                     />
-                    <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-20">
+                    <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-40">
                       <button
                         onClick={() => {
                           setPriorityFilter('all');
@@ -727,10 +727,10 @@ function App() {
                 {showOwnerMenu && (
                   <>
                     <div
-                      className="fixed inset-0 z-10"
+                      className="fixed inset-0 z-30"
                       onClick={() => setShowOwnerMenu(false)}
                     />
-                    <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-20">
+                    <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-40">
                       <button
                         onClick={() => {
                           setOwnerFilter('all');
@@ -794,10 +794,10 @@ function App() {
                 {showDateMenu && (
                   <>
                     <div
-                      className="fixed inset-0 z-10"
+                      className="fixed inset-0 z-30"
                       onClick={() => setShowDateMenu(false)}
                     />
-                    <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-20">
+                    <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-40">
                       <button
                         onClick={() => {
                           setDateFilter('all');
