@@ -27,6 +27,7 @@ function App() {
   const [ownerFilter, setOwnerFilter] = useState<'all' | '阿伟' | 'choco' | '05'>('all');
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
   const [showOwnerMenu, setShowOwnerMenu] = useState(false);
+  const [showDateMenu, setShowDateMenu] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [editConfirmData, setEditConfirmData] = useState<{
     voiceText: string;
@@ -833,36 +834,72 @@ function App() {
                 )}
               </div>
 
-              <button
-                onClick={() => setDateFilter('today')}
-                className={`flex-1 py-2.5 md:py-1.5 px-3 rounded-lg text-base md:text-sm transition-colors active:scale-95 ${
-                  dateFilter === 'today'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                今天
-              </button>
-              <button
-                onClick={() => setDateFilter('thisWeek')}
-                className={`flex-1 py-2.5 md:py-1.5 px-3 rounded-lg text-base md:text-sm transition-colors active:scale-95 ${
-                  dateFilter === 'thisWeek'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                本周
-              </button>
-              <button
-                onClick={() => setDateFilter('noDate')}
-                className={`flex-1 py-2.5 md:py-1.5 px-3 rounded-lg text-base md:text-sm transition-colors active:scale-95 ${
-                  dateFilter === 'noDate'
-                    ? 'bg-gray-500 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                无时间
-              </button>
+              <div className="relative flex-1">
+                <button
+                  onClick={() => setShowDateMenu(!showDateMenu)}
+                  className={`w-full py-2.5 md:py-1.5 px-3 rounded-lg text-base md:text-sm transition-colors active:scale-95 flex items-center justify-center gap-1 ${
+                    dateFilter !== 'all'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <span>
+                    {dateFilter === 'all' ? '时间' :
+                     dateFilter === 'today' ? '今天' :
+                     dateFilter === 'thisWeek' ? '本周' : '无时间'}
+                  </span>
+                  <ChevronDown size={16} className={`transition-transform ${
+                    showDateMenu ? 'rotate-180' : ''
+                  }`} />
+                </button>
+
+                {showDateMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowDateMenu(false)}
+                    />
+                    <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-20">
+                      <button
+                        onClick={() => {
+                          setDateFilter('all');
+                          setShowDateMenu(false);
+                        }}
+                        className="w-full px-3 py-2 text-left hover:bg-gray-50 text-sm text-gray-700 transition-colors"
+                      >
+                        全部时间
+                      </button>
+                      <button
+                        onClick={() => {
+                          setDateFilter('today');
+                          setShowDateMenu(false);
+                        }}
+                        className="w-full px-3 py-2 text-left hover:bg-blue-50 text-sm text-blue-600 transition-colors"
+                      >
+                        今天
+                      </button>
+                      <button
+                        onClick={() => {
+                          setDateFilter('thisWeek');
+                          setShowDateMenu(false);
+                        }}
+                        className="w-full px-3 py-2 text-left hover:bg-blue-50 text-sm text-blue-600 transition-colors"
+                      >
+                        本周
+                      </button>
+                      <button
+                        onClick={() => {
+                          setDateFilter('noDate');
+                          setShowDateMenu(false);
+                        }}
+                        className="w-full px-3 py-2 text-left hover:bg-blue-50 text-sm text-blue-600 transition-colors"
+                      >
+                        无时间
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
