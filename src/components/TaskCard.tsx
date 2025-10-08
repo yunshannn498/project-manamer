@@ -14,6 +14,7 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
   const [isEditing, setIsEditing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showMobileModal, setShowMobileModal] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
   const [editDescription, setEditDescription] = useState(task.description || '');
   const [editPriority, setEditPriority] = useState(task.priority || '');
@@ -139,6 +140,16 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
     setIsEditing(false);
   };
 
+  const handleCompleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsCompleting(true);
+    setTimeout(() => {
+      if (onComplete) {
+        onComplete();
+      }
+    }, 600);
+  };
+
   const dueDateInfo = task.dueDate ? formatDueDate(task.dueDate) : null;
 
   if (isEditing && !isMobile) {
@@ -257,19 +268,24 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
         onCancel={() => setShowMobileModal(false)}
       />
       <div
-        className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 md:p-3 hover:shadow-md transition-shadow cursor-pointer active:scale-[0.98]"
+        className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 md:p-3 hover:shadow-md cursor-pointer active:scale-[0.98] relative overflow-hidden ${
+          isCompleting
+            ? 'animate-[slideOut_0.6s_ease-in-out_forwards] pointer-events-none'
+            : 'transition-shadow'
+        }`}
         onClick={handleCardClick}
       >
+        {isCompleting && (
+          <div className="absolute inset-0 bg-gradient-to-br from-green-400/30 to-emerald-500/30 backdrop-blur-[2px] z-10 animate-[fadeIn_0.3s_ease-out]" />
+        )}
         <div className="flex justify-between items-start gap-2 mb-2">
           <h4 className="font-medium text-gray-800 flex-1 text-lg md:text-base">{task.title}</h4>
           <div className="flex gap-3 md:gap-2">
             {task.status !== 'done' && onComplete && (
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onComplete();
-                }}
-                className="flex items-center justify-center min-w-[44px] min-h-[44px] md:min-w-[32px] md:min-h-[32px] text-gray-400 hover:text-green-500 hover:bg-green-50 md:hover:bg-green-100 rounded-lg md:rounded transition-all active:scale-90 active:bg-green-100"
+                onClick={handleCompleteClick}
+                disabled={isCompleting}
+                className="flex items-center justify-center min-w-[44px] min-h-[44px] md:min-w-[32px] md:min-h-[32px] text-gray-400 hover:text-green-500 hover:bg-green-50 md:hover:bg-green-100 rounded-lg md:rounded transition-all active:scale-90 active:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed z-20 relative"
                 title="标记为完成"
                 aria-label="标记为完成"
               >
