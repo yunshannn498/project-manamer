@@ -285,7 +285,7 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
               <button
                 onClick={handleCompleteClick}
                 disabled={isCompleting}
-                className="flex items-center justify-center min-w-[44px] min-h-[44px] md:min-w-[32px] md:min-h-[32px] text-gray-400 hover:text-green-500 hover:bg-green-50 md:hover:bg-green-100 rounded-lg md:rounded transition-all active:scale-90 active:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed z-20 relative"
+                className="flex items-center justify-center min-w-[44px] min-h-[44px] md:min-w-[32px] md:min-h-[32px] text-gray-400 hover:text-green-500 hover:bg-green-50 md:hover:bg-green-100 rounded-lg md:rounded transition-all active:scale-90 active:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed relative"
                 title="标记为完成"
                 aria-label="标记为完成"
               >
