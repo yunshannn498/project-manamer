@@ -218,6 +218,15 @@ export const parseVoiceInput = (text: string): Omit<Task, 'id' | 'createdAt'> =>
   const dueDate = parseDateTime(text);
 
   const tags: string[] = [];
+
+  const owners = ['阿伟', 'choco', '05'];
+  for (const owner of owners) {
+    if (text.includes(owner)) {
+      tags.push(`负责人:${owner}`);
+      break;
+    }
+  }
+
   const tagKeywords = ['标签', '分类', '类别'];
   tagKeywords.forEach(keyword => {
     const tagIndex = lowerText.indexOf(keyword);
@@ -283,6 +292,15 @@ export const parseEditIntent = (text: string): Partial<Omit<Task, 'id' | 'create
   }
 
   const tags: string[] = [];
+
+  const owners = ['阿伟', 'choco', '05'];
+  for (const owner of owners) {
+    if (text.includes(owner)) {
+      tags.push(`负责人:${owner}`);
+      break;
+    }
+  }
+
   const tagKeywords = ['标签', '分类', '类别'];
   tagKeywords.forEach(keyword => {
     const tagIndex = lowerText.indexOf(keyword);

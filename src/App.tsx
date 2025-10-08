@@ -24,7 +24,9 @@ function App() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'thisWeek' | 'noDate'>('all');
+  const [ownerFilter, setOwnerFilter] = useState<'all' | '阿伟' | 'choco' | '05'>('all');
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
+  const [showOwnerMenu, setShowOwnerMenu] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [editConfirmData, setEditConfirmData] = useState<{
     voiceText: string;
@@ -132,8 +134,17 @@ function App() {
         console.log(`[加载任务-${source}] 前3条任务:`, loadedTasks.slice(0, 3).map(t => ({ id: t.id, title: t.title })));
       }
 
-      setTasks(loadedTasks);
-      saveTasksToLocal(loadedTasks);
+      const tasksWithOwner = loadedTasks.map(task => {
+        const hasOwner = task.tags?.some(tag => tag.startsWith('负责人:'));
+        if (!hasOwner) {
+          const newTags = [...(task.tags || []), '负责人:阿伟'];
+          return { ...task, tags: newTags };
+        }
+        return task;
+      });
+
+      setTasks(tasksWithOwner);
+      saveTasksToLocal(tasksWithOwner);
       setIsOfflineMode(false);
       console.log(`=== [加载任务-${source}] 完成（成功）===`);
     } catch (err) {
@@ -156,7 +167,7 @@ function App() {
 
   const filteredTasks = useMemo(() => {
     console.log('[任务过滤] 开始过滤，原始任务数:', tasks.length);
-    console.log('[任务过滤] 过滤条件 - 完成状态:', showCompleted, '优先级:', priorityFilter, '日期:', dateFilter, '搜索:', searchQuery);
+    console.log('[任务过滤] 过滤条件 - 完成状态:', showCompleted, '优先级:', priorityFilter, '日期:', dateFilter, '负责人:', ownerFilter, '搜索:', searchQuery);
 
     const query = searchQuery.toLowerCase().trim();
     let filtered = showCompleted
@@ -169,6 +180,14 @@ function App() {
       const beforePriority = filtered.length;
       filtered = filtered.filter(task => task.priority === priorityFilter);
       console.log('[任务过滤] 优先级过滤后:', filtered.length, '(过滤掉', beforePriority - filtered.length, ')');
+    }
+
+    if (ownerFilter !== 'all') {
+      const beforeOwner = filtered.length;
+      filtered = filtered.filter(task =>
+        task.tags?.some(tag => tag === `负责人:${ownerFilter}`)
+      );
+      console.log('[任务过滤] 负责人过滤后:', filtered.length, '(过滤掉', beforeOwner - filtered.length, ')');
     }
 
     if (dateFilter === 'today') {
@@ -218,7 +237,7 @@ function App() {
 
     console.log('[任务过滤] 最终结果:', filtered.length);
     return filtered;
-  }, [tasks, searchQuery, showCompleted, priorityFilter, dateFilter]);
+  }, [tasks, searchQuery, showCompleted, priorityFilter, dateFilter, ownerFilter]);
 
   const sortedTasks = useMemo(() => {
     const sorted = [...filteredTasks].sort((a, b) => {
@@ -247,9 +266,13 @@ function App() {
     console.log('[创建任务] 任务数据:', JSON.stringify(taskData, null, 2));
     console.log('[创建任务] 当前任务列表长度:', tasks.length);
 
+    const hasOwner = taskData.tags?.some(tag => tag.startsWith('负责人:'));
+    const finalTags = hasOwner ? taskData.tags : [...(taskData.tags || []), '负责人:阿伟'];
+
     const optimisticTask: Task = {
       id: crypto.randomUUID(),
       ...taskData,
+      tags: finalTags,
       createdAt: Date.now()
     };
 
@@ -277,7 +300,8 @@ function App() {
     }
 
     console.log('[创建任务] 调用数据库服务...');
-    const result = await databaseService.createTask(taskData);
+    const taskDataWithOwner = { ...taskData, tags: finalTags };
+    const result = await databaseService.createTask(taskDataWithOwner);
     console.log('[创建任务] 数据库响应:', result.error ? '错误' : '成功', result.isOffline ? '(离线)' : '(在线)');
 
     if (result.error || result.isOffline) {
@@ -669,9 +693,13 @@ function App() {
 
             <div className="flex gap-3 md:gap-2">
               <button
-                onClick={() => setDateFilter('all')}
+                onClick={() => {
+                  setDateFilter('all');
+                  setPriorityFilter('all');
+                  setOwnerFilter('all');
+                }}
                 className={`flex-1 py-2.5 md:py-1.5 px-3 rounded-lg text-base md:text-sm transition-colors active:scale-95 ${
-                  dateFilter === 'all'
+                  dateFilter === 'all' && priorityFilter === 'all' && ownerFilter === 'all'
                     ? 'bg-gray-700 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
@@ -736,6 +764,69 @@ function App() {
                         className="w-full px-3 py-2 text-left hover:bg-green-50 text-sm text-green-600 transition-colors"
                       >
                         低优先级
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="relative flex-1">
+                <button
+                  onClick={() => setShowOwnerMenu(!showOwnerMenu)}
+                  className={`w-full py-2.5 md:py-1.5 px-3 rounded-lg text-base md:text-sm transition-colors active:scale-95 flex items-center justify-center gap-1 ${
+                    ownerFilter !== 'all'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <span>{ownerFilter === 'all' ? '负责人' : ownerFilter}</span>
+                  <ChevronDown size={16} className={`transition-transform ${
+                    showOwnerMenu ? 'rotate-180' : ''
+                  }`} />
+                </button>
+
+                {showOwnerMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowOwnerMenu(false)}
+                    />
+                    <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-20">
+                      <button
+                        onClick={() => {
+                          setOwnerFilter('all');
+                          setShowOwnerMenu(false);
+                        }}
+                        className="w-full px-3 py-2 text-left hover:bg-gray-50 text-sm text-gray-700 transition-colors"
+                      >
+                        全部负责人
+                      </button>
+                      <button
+                        onClick={() => {
+                          setOwnerFilter('阿伟');
+                          setShowOwnerMenu(false);
+                        }}
+                        className="w-full px-3 py-2 text-left hover:bg-blue-50 text-sm text-blue-600 transition-colors"
+                      >
+                        阿伟
+                      </button>
+                      <button
+                        onClick={() => {
+                          setOwnerFilter('choco');
+                          setShowOwnerMenu(false);
+                        }}
+                        className="w-full px-3 py-2 text-left hover:bg-blue-50 text-sm text-blue-600 transition-colors"
+                      >
+                        choco
+                      </button>
+                      <button
+                        onClick={() => {
+                          setOwnerFilter('05');
+                          setShowOwnerMenu(false);
+                        }}
+                        className="w-full px-3 py-2 text-left hover:bg-blue-50 text-sm text-blue-600 transition-colors"
+                      >
+                        05
                       </button>
                     </div>
                   </>
