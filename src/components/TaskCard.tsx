@@ -17,6 +17,10 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
   const [editTitle, setEditTitle] = useState(task.title);
   const [editDescription, setEditDescription] = useState(task.description || '');
   const [editPriority, setEditPriority] = useState(task.priority || '');
+  const [editOwner, setEditOwner] = useState(() => {
+    const ownerTag = task.tags?.find(tag => tag.startsWith('负责人:'));
+    return ownerTag ? ownerTag.split(':')[1] : '阿伟';
+  });
   const [editDueDate, setEditDueDate] = useState(() => {
     if (task.dueDate) {
       const date = new Date(task.dueDate);
@@ -82,12 +86,16 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
         dueDate = new Date(dateTimeString).getTime();
       }
 
+      const otherTags = task.tags?.filter(tag => !tag.startsWith('负责人:')) || [];
+      const newTags = [...otherTags, `负责人:${editOwner}`];
+
       onUpdate({
         ...task,
         title: editTitle.trim(),
         description: editDescription.trim() || undefined,
         priority: editPriority as 'low' | 'medium' | 'high' | undefined,
-        dueDate
+        dueDate,
+        tags: newTags
       });
       setIsEditing(false);
     }
@@ -110,6 +118,8 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
     setEditTitle(task.title);
     setEditDescription(task.description || '');
     setEditPriority(task.priority || '');
+    const ownerTag = task.tags?.find(tag => tag.startsWith('负责人:'));
+    setEditOwner(ownerTag ? ownerTag.split(':')[1] : '阿伟');
     setEditDueDate(() => {
       if (task.dueDate) {
         const date = new Date(task.dueDate);
@@ -167,6 +177,19 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
               <option value="low">低</option>
               <option value="medium">中</option>
               <option value="high">高</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">负责人</label>
+            <select
+              value={editOwner}
+              onChange={(e) => setEditOwner(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+            >
+              <option value="阿伟">阿伟</option>
+              <option value="choco">choco</option>
+              <option value="05">05</option>
             </select>
           </div>
 
