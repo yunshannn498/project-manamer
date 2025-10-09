@@ -15,6 +15,7 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
   const [isMobile, setIsMobile] = useState(false);
   const [showMobileModal, setShowMobileModal] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
   const [editDescription, setEditDescription] = useState(task.description || '');
   const [editPriority, setEditPriority] = useState(task.priority || '');
@@ -271,6 +272,8 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
         className={`bg-white rounded-2xl shadow-md border-2 border-orange-100 p-4 md:p-3 hover:shadow-xl hover:border-primary-300 cursor-pointer active:scale-[0.98] relative overflow-hidden transition-all duration-300 group ${
           isCompleting
             ? 'animate-[slideOut_0.6s_ease-in-out_forwards] pointer-events-none'
+            : isDeleting
+            ? 'animate-[deleteSlide_0.4s_ease-in-out_forwards] pointer-events-none'
             : ''
         }`}
         onClick={handleCardClick}
@@ -297,9 +300,13 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onDelete();
+                setIsDeleting(true);
+                setTimeout(() => {
+                  onDelete();
+                }, 400);
               }}
-              className="flex items-center justify-center min-w-[44px] min-h-[44px] md:min-w-[32px] md:min-h-[32px] text-gray-400 hover:text-red-600 hover:bg-gradient-to-br hover:from-red-50 hover:to-rose-50 rounded-xl md:rounded-lg transition-all duration-300 active:scale-90 shadow-sm hover:shadow"
+              disabled={isDeleting}
+              className="flex items-center justify-center min-w-[44px] min-h-[44px] md:min-w-[32px] md:min-h-[32px] text-gray-400 hover:text-red-600 hover:bg-gradient-to-br hover:from-red-50 hover:to-rose-50 rounded-xl md:rounded-lg transition-all duration-300 active:scale-90 shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="删除任务"
             >
               <X size={24} className="md:w-5 md:h-5" />
