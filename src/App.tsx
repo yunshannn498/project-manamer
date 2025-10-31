@@ -231,6 +231,14 @@ function App() {
 
   const sortedTasks = useMemo(() => {
     const sorted = [...filteredTasks].sort((a, b) => {
+      // If both tasks are completed, sort by completion time (newest first)
+      if (a.status === 'done' && b.status === 'done') {
+        const aCompletedAt = a.completedAt ?? 0;
+        const bCompletedAt = b.completedAt ?? 0;
+        return bCompletedAt - aCompletedAt;
+      }
+
+      // Non-completed tasks: sort by due date first
       const aDueDate = a.dueDate ?? Infinity;
       const bDueDate = b.dueDate ?? Infinity;
 
@@ -238,6 +246,7 @@ function App() {
         return aDueDate - bDueDate;
       }
 
+      // Then by priority
       const aPriority = a.priority === 'high' ? 3 : a.priority === 'medium' ? 2 : a.priority === 'low' ? 1 : 0;
       const bPriority = b.priority === 'high' ? 3 : b.priority === 'medium' ? 2 : b.priority === 'low' ? 1 : 0;
 
@@ -245,6 +254,7 @@ function App() {
         return bPriority - aPriority;
       }
 
+      // Finally by creation time
       return b.createdAt - a.createdAt;
     });
     console.log('[任务过滤] 总任务数:', tasks.length, '过滤后:', filteredTasks.length, '排序后:', sorted.length);

@@ -7,6 +7,7 @@ export interface Task {
   priority?: 'low' | 'medium' | 'high';
   tags?: string[];
   status?: string;
+  completedAt?: number;
 }
 
 export interface List {

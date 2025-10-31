@@ -62,7 +62,8 @@ class DatabaseService {
         priority: task.priority || 'medium',
         dueDate: task.due_date ? new Date(task.due_date).getTime() : undefined,
         tags: task.tags || [],
-        createdAt: new Date(task.created_at).getTime()
+        createdAt: new Date(task.created_at).getTime(),
+        completedAt: task.completed_at ? new Date(task.completed_at).getTime() : undefined
       }));
 
       console.log(`[DB Service] ✓ 映射完成，共 ${mappedTasks.length} 条任务`);
@@ -158,7 +159,8 @@ class DatabaseService {
         priority: data.priority || 'medium',
         dueDate: data.due_date ? new Date(data.due_date).getTime() : undefined,
         tags: data.tags || [],
-        createdAt: new Date(data.created_at).getTime()
+        createdAt: new Date(data.created_at).getTime(),
+        completedAt: data.completed_at ? new Date(data.completed_at).getTime() : undefined
       };
 
       console.log('[DB Service] ✓ Task created successfully');
@@ -245,7 +247,8 @@ class DatabaseService {
         priority: data.priority || 'medium',
         dueDate: data.due_date ? new Date(data.due_date).getTime() : undefined,
         tags: data.tags || [],
-        createdAt: new Date(data.created_at).getTime()
+        createdAt: new Date(data.created_at).getTime(),
+        completedAt: data.completed_at ? new Date(data.completed_at).getTime() : undefined
       };
 
       console.log('[DB Service] ✓ Task updated:', updatedTask.id);
