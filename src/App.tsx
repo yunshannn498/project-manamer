@@ -374,6 +374,8 @@ function App() {
 
     setDeleteConfirmData(null);
 
+    await new Promise(resolve => setTimeout(resolve, 200));
+
     setTasks(currentTasks => {
       console.log('[删除任务] 当前任务列表长度:', currentTasks.length);
       deletedTaskRef = currentTasks.find(t => t.id === taskId);
