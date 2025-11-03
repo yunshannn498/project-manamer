@@ -8,14 +8,14 @@ interface TaskCardProps {
   onDelete: () => void;
   onUpdate: (task: Task) => void;
   onComplete?: () => void;
+  isDeleting?: boolean;
 }
 
-export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps) => {
+export const TaskCard = ({ task, onDelete, onUpdate, onComplete, isDeleting = false }: TaskCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showMobileModal, setShowMobileModal] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
   const [editDescription, setEditDescription] = useState(task.description || '');
   const [editPriority, setEditPriority] = useState(task.priority || '');
@@ -313,10 +313,7 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setIsDeleting(true);
-                setTimeout(() => {
-                  onDelete();
-                }, 400);
+                onDelete();
               }}
               disabled={isDeleting}
               className="flex items-center justify-center min-w-[44px] min-h-[44px] md:min-w-[32px] md:min-h-[32px] text-gray-400 hover:text-red-600 hover:bg-gradient-to-br hover:from-red-50 hover:to-rose-50 rounded-xl md:rounded-lg transition-all duration-300 active:scale-90 shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"

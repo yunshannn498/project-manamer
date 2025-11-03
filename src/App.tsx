@@ -29,6 +29,7 @@ function App() {
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const [deleteConfirmData, setDeleteConfirmData] = useState<{ taskId: string; taskTitle: string } | null>(null);
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
   const [showImportExportModal, setShowImportExportModal] = useState(false);
@@ -371,21 +372,26 @@ function App() {
     console.log('[删除任务] ID:', taskId);
 
     let deletedTaskRef: Task | undefined;
+    deletedTaskRef = tasks.find(t => t.id === taskId);
+    console.log('[删除任务] 找到任务:', deletedTaskRef ? deletedTaskRef.title : '未找到');
 
     setDeleteConfirmData(null);
 
-    await new Promise(resolve => setTimeout(resolve, 200));
+    setDeletingTaskId(taskId);
+    console.log('[删除任务] 触发动画，等待400ms...');
+
+    await new Promise(resolve => setTimeout(resolve, 400));
 
     setTasks(currentTasks => {
       console.log('[删除任务] 当前任务列表长度:', currentTasks.length);
-      deletedTaskRef = currentTasks.find(t => t.id === taskId);
-      console.log('[删除任务] 找到任务:', deletedTaskRef ? deletedTaskRef.title : '未找到');
-
       const newTasks = currentTasks.filter(task => task.id !== taskId);
-      console.log('[删除任务] 乐观删除，新列表长度:', newTasks.length);
+      console.log('[删除任务] 从状态删除，新列表长度:', newTasks.length);
       saveTasksToLocal(newTasks);
       return newTasks;
     });
+
+    setDeletingTaskId(null);
+    console.log('[删除任务] 动画完成，重置状态');
 
     if (isOfflineMode) {
       console.log('[删除任务] 离线模式，仅从本地删除');
@@ -986,6 +992,7 @@ function App() {
                   onDelete={() => handleDeleteClick(task.id)}
                   onUpdate={handleUpdateTask}
                   onComplete={() => handleCompleteTask(task.id)}
+                  isDeleting={deletingTaskId === task.id}
                 />
               </div>
             ))}
