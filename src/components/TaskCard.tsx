@@ -80,6 +80,14 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
     }
   };
 
+  const formatCompletedDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return {
+      text: `完成时间：${date.getMonth() + 1}月${date.getDate()}日`,
+      color: 'text-green-700 bg-gradient-to-r from-green-100 to-emerald-100 shadow-sm'
+    };
+  };
+
   const handleSave = () => {
     if (editTitle.trim()) {
       let dueDate: number | undefined;
@@ -151,7 +159,12 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
     }, 600);
   };
 
-  const dueDateInfo = task.dueDate ? formatDueDate(task.dueDate) : null;
+  const isCompleted = task.status === 'done';
+  const timeInfo = isCompleted && task.completedAt
+    ? formatCompletedDate(task.completedAt)
+    : task.dueDate
+    ? formatDueDate(task.dueDate)
+    : null;
 
   if (isEditing && !isMobile) {
     return (
@@ -325,10 +338,10 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete }: TaskCardProps
             </span>
           )}
 
-          {dueDateInfo && (
-            <div className={`flex gap-1 items-center text-sm md:text-xs px-3 py-1.5 md:px-2 md:py-1 rounded-full font-semibold ${dueDateInfo.color}`}>
+          {timeInfo && (
+            <div className={`flex gap-1 items-center text-sm md:text-xs px-3 py-1.5 md:px-2 md:py-1 rounded-full font-semibold ${timeInfo.color}`}>
               <Clock size={14} className="md:w-3 md:h-3" />
-              <span>{dueDateInfo.text}</span>
+              <span>{timeInfo.text}</span>
             </div>
           )}
 
