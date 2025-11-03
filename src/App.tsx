@@ -372,6 +372,8 @@ function App() {
 
     let deletedTaskRef: Task | undefined;
 
+    setDeleteConfirmData(null);
+
     setTasks(currentTasks => {
       console.log('[删除任务] 当前任务列表长度:', currentTasks.length);
       deletedTaskRef = currentTasks.find(t => t.id === taskId);
@@ -382,8 +384,6 @@ function App() {
       saveTasksToLocal(newTasks);
       return newTasks;
     });
-
-    setDeleteConfirmData(null);
 
     if (isOfflineMode) {
       console.log('[删除任务] 离线模式，仅从本地删除');
