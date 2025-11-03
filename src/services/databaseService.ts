@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Task } from '../types';
+import { Task, OperationLog } from '../types';
 
 export interface DatabaseOperationResult<T> {
   data: T | null;
@@ -369,6 +369,157 @@ class DatabaseService {
 
   resetRetryCount(): void {
     this.retryCount = 0;
+  }
+
+  async logOperation(
+    operationType: 'created' | 'updated' | 'deleted',
+    taskId: string | null,
+    taskTitle: string,
+    operationDetails: Record<string, unknown> = {},
+    userInfo: string = ''
+  ): Promise<DatabaseOperationResult<OperationLog>> {
+    console.log('[DB Service] Logging operation:', operationType, taskTitle);
+
+    if (!this.isOnline) {
+      console.warn('[DB Service] ⚠️ Offline mode, cannot log operation');
+      return {
+        data: null,
+        error: new Error('Database is offline'),
+        isOffline: true
+      };
+    }
+
+    try {
+      const insertData = {
+        operation_type: operationType,
+        task_id: taskId,
+        task_title: taskTitle,
+        operation_details: operationDetails,
+        user_info: userInfo
+      };
+
+      const { data, error } = await supabase
+        .from('operation_logs')
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[DB Service] ❌ Error logging operation:', error.message);
+
+        if (this.isNetworkError(error)) {
+          this.isOnline = false;
+          return {
+            data: null,
+            error: new Error('Network connection failed'),
+            isOffline: true
+          };
+        }
+
+        return {
+          data: null,
+          error: new Error(error.message),
+          isOffline: false
+        };
+      }
+
+      if (!data) {
+        console.error('[DB Service] ❌ No data returned from operation log insert');
+        return {
+          data: null,
+          error: new Error('No data returned from insert'),
+          isOffline: false
+        };
+      }
+
+      const newLog: OperationLog = {
+        id: data.id,
+        operationType: data.operation_type as 'created' | 'updated' | 'deleted',
+        taskId: data.task_id,
+        taskTitle: data.task_title,
+        operationDetails: data.operation_details || {},
+        userInfo: data.user_info || '',
+        createdAt: new Date(data.created_at).getTime()
+      };
+
+      console.log('[DB Service] ✓ Operation logged successfully');
+      return {
+        data: newLog,
+        error: null,
+        isOffline: false
+      };
+    } catch (err) {
+      console.error('[DB Service] ❌ Exception while logging operation:', err);
+      this.isOnline = false;
+
+      return {
+        data: null,
+        error: err instanceof Error ? err : new Error('Unknown error'),
+        isOffline: true
+      };
+    }
+  }
+
+  async getOperationLogs(limit: number = 100, offset: number = 0): Promise<DatabaseOperationResult<OperationLog[]>> {
+    console.log('[DB Service] Getting operation logs...');
+
+    try {
+      const { data, error } = await supabase
+        .from('operation_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) {
+        console.error('[DB Service] ❌ Error fetching operation logs:', error.message);
+
+        if (this.isNetworkError(error)) {
+          this.isOnline = false;
+          return {
+            data: null,
+            error: new Error('Network connection failed'),
+            isOffline: true
+          };
+        }
+
+        return {
+          data: null,
+          error: new Error(error.message),
+          isOffline: false
+        };
+      }
+
+      if (!data) {
+        console.log('[DB Service] ✓ No operation logs found, returning empty array');
+        return { data: [], error: null, isOffline: false };
+      }
+
+      const mappedLogs: OperationLog[] = data.map(log => ({
+        id: log.id,
+        operationType: log.operation_type as 'created' | 'updated' | 'deleted',
+        taskId: log.task_id,
+        taskTitle: log.task_title,
+        operationDetails: log.operation_details || {},
+        userInfo: log.user_info || '',
+        createdAt: new Date(log.created_at).getTime()
+      }));
+
+      console.log(`[DB Service] ✓ Retrieved ${mappedLogs.length} operation logs`);
+      return {
+        data: mappedLogs,
+        error: null,
+        isOffline: false
+      };
+    } catch (err) {
+      console.error('[DB Service] ❌ Exception while fetching operation logs:', err);
+      this.isOnline = false;
+
+      return {
+        data: null,
+        error: err instanceof Error ? err : new Error('Unknown error'),
+        isOffline: true
+      };
+    }
   }
 }
 

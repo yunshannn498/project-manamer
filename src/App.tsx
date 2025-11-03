@@ -10,9 +10,10 @@ import { parseTaskIntent as parseTaskIntentLocal } from './services/semanticPars
 import { testDatabaseConnection } from './lib/supabase';
 import { databaseService } from './services/databaseService';
 import { saveTasksToLocal, loadTasksFromLocal } from './storage';
-import { ListTodo, Search, ChevronDown, Download } from 'lucide-react';
+import { ListTodo, Search, ChevronDown, Download, History } from 'lucide-react';
 import NetworkStatus from './components/NetworkStatus';
 import ImportExportModal from './components/ImportExportModal';
+import OperationLogsModal from './components/OperationLogsModal';
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -31,6 +32,7 @@ function App() {
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
   const [showImportExportModal, setShowImportExportModal] = useState(false);
+  const [showOperationLogsModal, setShowOperationLogsModal] = useState(false);
   const lastScrollY = useRef(0);
   const scrollThreshold = 50;
 
@@ -328,22 +330,38 @@ function App() {
       console.log('[创建任务] ✓ 成功，数据库ID:', result.data.id);
       console.log('[创建任务] 替换乐观任务ID:', optimisticTask.id, '-> ', result.data.id);
 
+      const newTask = result.data;
       setTasks(currentTasks => {
-        const updatedTasks = currentTasks.map(t => t.id === optimisticTask.id ? result.data : t);
+        const updatedTasks = currentTasks.map(t => t.id === optimisticTask.id ? newTask : t);
         console.log('[创建任务] 更新后任务列表长度:', updatedTasks.length);
-        console.log('[创建任务] 找到并替换了乐观任务:', updatedTasks.some(t => t.id === result.data.id));
+        console.log('[创建任务] 找到并替换了乐观任务:', updatedTasks.some(t => t.id === newTask.id));
         saveTasksToLocal(updatedTasks);
         return updatedTasks;
       });
 
-      setHighlightedTaskId(result.data.id);
+      setHighlightedTaskId(newTask.id);
       setTimeout(() => {
-        const element = taskRefs.current.get(result.data.id);
+        const element = taskRefs.current.get(newTask.id);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, 100);
       setTimeout(() => setHighlightedTaskId(null), 2000);
+
+      const ownerTag = finalTags?.find(tag => tag.startsWith('负责人:'));
+      const userInfo = ownerTag ? ownerTag.replace('负责人:', '') : '';
+      await databaseService.logOperation(
+        'created',
+        newTask.id,
+        newTask.title,
+        {
+          priority: newTask.priority,
+          status: newTask.status,
+          dueDate: newTask.dueDate
+        },
+        userInfo
+      );
+
       console.log('=== [创建任务] 完成（成功）===');
     }
   };
@@ -396,6 +414,22 @@ function App() {
       console.log('=== [删除任务] 完成（失败）===');
     } else {
       console.log('[删除任务] ✓ 成功');
+
+      if (deletedTaskRef) {
+        const ownerTag = deletedTaskRef.tags?.find(tag => tag.startsWith('负责人:'));
+        const userInfo = ownerTag ? ownerTag.replace('负责人:', '') : '';
+        await databaseService.logOperation(
+          'deleted',
+          taskId,
+          deletedTaskRef.title,
+          {
+            priority: deletedTaskRef.priority,
+            status: deletedTaskRef.status
+          },
+          userInfo
+        );
+      }
+
       console.log('=== [删除任务] 完成（成功）===');
     }
   };
@@ -450,8 +484,9 @@ function App() {
 
       if (oldTaskRef) {
         console.log('[更新任务] 回滚到原任务');
+        const oldTask = oldTaskRef;
         setTasks(currentTasks => {
-          const restoredTasks = currentTasks.map(task => task.id === updatedTask.id ? oldTaskRef : task);
+          const restoredTasks = currentTasks.map(task => task.id === updatedTask.id ? oldTask : task);
           saveTasksToLocal(restoredTasks);
           return restoredTasks;
         });
@@ -465,6 +500,43 @@ function App() {
       console.log('=== [更新任务] 完成（失败）===');
     } else {
       console.log('[更新任务] ✓ 成功');
+
+      if (oldTaskRef) {
+        const changes: Record<string, unknown> = {};
+        if (oldTaskRef.status !== updatedTask.status) {
+          changes.statusChanged = true;
+          changes.oldStatus = oldTaskRef.status;
+          changes.newStatus = updatedTask.status;
+        }
+        if (oldTaskRef.priority !== updatedTask.priority) {
+          changes.priorityChanged = true;
+          changes.oldPriority = oldTaskRef.priority;
+          changes.newPriority = updatedTask.priority;
+        }
+        if (oldTaskRef.title !== updatedTask.title) {
+          changes.titleChanged = true;
+        }
+        if (oldTaskRef.description !== updatedTask.description) {
+          changes.descriptionChanged = true;
+        }
+        if (oldTaskRef.dueDate !== updatedTask.dueDate) {
+          changes.dueDateChanged = true;
+        }
+        if (JSON.stringify(oldTaskRef.tags) !== JSON.stringify(updatedTask.tags)) {
+          changes.tagsChanged = true;
+        }
+
+        const ownerTag = updatedTask.tags?.find(tag => tag.startsWith('负责人:'));
+        const userInfo = ownerTag ? ownerTag.replace('负责人:', '') : '';
+        await databaseService.logOperation(
+          'updated',
+          updatedTask.id,
+          updatedTask.title,
+          changes,
+          userInfo
+        );
+      }
+
       console.log('=== [更新任务] 完成（成功）===');
     }
   };
@@ -511,13 +583,16 @@ function App() {
       if (isOfflineMode) {
         console.log('[导入任务] 离线模式，仅保存到本地');
         let newTasks: Task[];
+        let uniqueImportedCount = 0;
 
         if (mode === 'replace') {
           newTasks = importedTasks;
+          uniqueImportedCount = importedTasks.length;
         } else {
           const existingIds = new Set(tasks.map(t => t.id));
           const uniqueImported = importedTasks.filter(t => !existingIds.has(t.id));
           newTasks = [...tasks, ...uniqueImported];
+          uniqueImportedCount = uniqueImported.length;
         }
 
         setTasks(newTasks);
@@ -526,8 +601,8 @@ function App() {
         setToast({
           message: mode === 'replace'
             ? `已替换 ${importedTasks.length} 个任务`
-            : `已导入 ${uniqueImported.length} 个新任务`,
-          type: 'added'
+            : `已导入 ${uniqueImportedCount} 个新任务`,
+          type: 'updated'
         });
         return;
       }
@@ -551,7 +626,7 @@ function App() {
 
       setToast({
         message: `成功导入 ${importedTasks.length} 个任务`,
-        type: 'added'
+        type: 'updated'
       });
 
       console.log('[导入任务] ✓ 完成');
@@ -577,6 +652,13 @@ function App() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowOperationLogsModal(true)}
+                className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 px-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-300 border border-gray-200 hover:border-gray-300"
+              >
+                <History size={16} />
+                <span className="hidden md:inline">操作记录</span>
+              </button>
               <button
                 onClick={() => setShowImportExportModal(true)}
                 className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 px-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-300 border border-gray-200 hover:border-gray-300"
@@ -933,6 +1015,11 @@ function App() {
         onClose={() => setShowImportExportModal(false)}
         tasks={tasks}
         onImport={handleImport}
+      />
+
+      <OperationLogsModal
+        isOpen={showOperationLogsModal}
+        onClose={() => setShowOperationLogsModal(false)}
       />
     </div>
   );

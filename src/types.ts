@@ -23,3 +23,13 @@ export interface Board {
   lists: List[];
   createdAt: number;
 }
+
+export interface OperationLog {
+  id: string;
+  operationType: 'created' | 'updated' | 'deleted';
+  taskId: string | null;
+  taskTitle: string;
+  operationDetails: Record<string, unknown>;
+  userInfo?: string;
+  createdAt: number;
+}
