@@ -1,87 +1,42 @@
-import { supabase } from '../lib/supabase';
 import type { Task } from '../types';
 
-interface WebhookConfig {
-  owner_name: string;
-  webhook_url: string;
-  is_enabled: boolean;
-}
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://0ec90b57d6e95fcbda19832f.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IjBlYzkwYjU3ZDZlOTVmY2JkYTE5ODMyZiIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzMzNTI5NjAwLCJleHAiOjIwNDkxMDU2MDB9.JYRNO7fS6JNshL7x5-7FZsX-2YzZx_9F9T9cJ8qxGzI';
 
-const webhookCache = new Map<string, string>();
-let cacheTimestamp = 0;
-const CACHE_TTL = 5 * 60 * 1000;
-
-async function getWebhookUrl(ownerName: string): Promise<string | null> {
-  const now = Date.now();
-
-  if (now - cacheTimestamp > CACHE_TTL) {
-    webhookCache.clear();
-    cacheTimestamp = now;
-  }
-
-  if (webhookCache.has(ownerName)) {
-    return webhookCache.get(ownerName) || null;
-  }
-
+async function sendNotificationViaEdgeFunction(ownerName: string, message: string): Promise<boolean> {
   try {
-    const { data, error } = await supabase
-      .from('feishu_webhooks')
-      .select('webhook_url, is_enabled')
-      .eq('owner_name', ownerName)
-      .eq('is_enabled', true)
-      .maybeSingle();
+    const edgeFunctionUrl = `${SUPABASE_URL}/functions/v1/feishu-notify`;
 
-    if (error) {
-      console.error(`Failed to fetch webhook for ${ownerName}:`, error);
-      return null;
-    }
+    console.log('[Feishu] 📤 通过 Edge Function 发送通知');
+    console.log('[Feishu] 目标负责人:', ownerName);
+    console.log('[Feishu] 消息内容:', message);
 
-    if (data) {
-      webhookCache.set(ownerName, data.webhook_url);
-      return data.webhook_url;
-    }
-
-    return null;
-  } catch (error) {
-    console.error(`Error fetching webhook for ${ownerName}:`, error);
-    return null;
-  }
-}
-
-async function sendToWebhook(webhookUrl: string, message: string): Promise<boolean> {
-  try {
-    console.log('[Feishu] 📤 发送 HTTP 请求到:', webhookUrl.substring(0, 50) + '...');
-
-    const payload = {
-      msg_type: 'text',
-      content: {
-        text: message
-      }
-    };
-    console.log('[Feishu] 请求体:', JSON.stringify(payload));
-
-    const response = await fetch(webhookUrl, {
+    const response = await fetch(edgeFunctionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
       },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(5000)
+      body: JSON.stringify({
+        ownerName,
+        message
+      }),
+      signal: AbortSignal.timeout(10000)
     });
 
-    console.log('[Feishu] 响应状态:', response.status, response.statusText);
+    console.log('[Feishu] Edge Function 响应状态:', response.status, response.statusText);
 
-    const responseText = await response.text();
-    console.log('[Feishu] 响应内容:', responseText);
+    const responseData = await response.json();
+    console.log('[Feishu] Edge Function 响应内容:', responseData);
 
     if (!response.ok) {
-      console.warn(`[Feishu] ⚠️ Webhook request failed with status ${response.status}`);
+      console.warn(`[Feishu] ⚠️ Edge Function 请求失败:`, responseData);
       return false;
     }
 
-    return true;
+    return responseData.success === true;
   } catch (error) {
-    console.error('[Feishu] ❌ Failed to send webhook notification:', error);
+    console.error('[Feishu] ❌ Edge Function 调用失败:', error);
     return false;
   }
 }
@@ -129,32 +84,20 @@ export async function sendTaskCreatedNotification(task: Task): Promise<void> {
   const owner = extractOwnerFromTags(task.tags);
   console.log('[Feishu] 提取的负责人:', owner);
 
-  const webhookUrl = await getWebhookUrl(owner);
-  console.log('[Feishu] 获取的 webhook URL:', webhookUrl ? '已找到' : '未找到');
-
-  if (!webhookUrl) {
-    console.warn(`[Feishu] ⚠️ No webhook found for owner: ${owner}`);
-    return;
-  }
-
   const priority = formatPriority(task.priority);
   const dueDate = task.dueDate ? `，截止时间：${formatDate(task.dueDate)}` : '';
 
   const message = `任务创建：${task.title}${priority ? `（${priority}）` : ''}${dueDate}`;
   console.log('[Feishu] 准备发送消息:', message);
 
-  const success = await sendToWebhook(webhookUrl, message);
+  const success = await sendNotificationViaEdgeFunction(owner, message);
   console.log('[Feishu] 发送结果:', success ? '✓ 成功' : '✗ 失败');
 }
 
 export async function sendTaskUpdatedNotification(oldTask: Task, newTask: Task): Promise<void> {
-  const newOwner = extractOwnerFromTags(newTask.tags);
-  const webhookUrl = await getWebhookUrl(newOwner);
+  console.log('[Feishu] 📝 开始发送任务更新通知');
 
-  if (!webhookUrl) {
-    console.warn(`No webhook found for owner: ${newOwner}`);
-    return;
-  }
+  const newOwner = extractOwnerFromTags(newTask.tags);
 
   const changes: string[] = [];
 
@@ -179,24 +122,22 @@ export async function sendTaskUpdatedNotification(oldTask: Task, newTask: Task):
   const changeText = changes.length > 0 ? `（${changes.join('，')}）` : '';
   const message = `任务更新：${newTask.title}${changeText}`;
 
-  await sendToWebhook(webhookUrl, message);
+  const success = await sendNotificationViaEdgeFunction(newOwner, message);
+  console.log('[Feishu] 发送结果:', success ? '✓ 成功' : '✗ 失败');
 }
 
 export async function sendTaskCompletedNotification(task: Task): Promise<void> {
-  const owner = extractOwnerFromTags(task.tags);
-  const webhookUrl = await getWebhookUrl(owner);
+  console.log('[Feishu] ✅ 开始发送任务完成通知');
 
-  if (!webhookUrl) {
-    console.warn(`No webhook found for owner: ${owner}`);
-    return;
-  }
+  const owner = extractOwnerFromTags(task.tags);
 
   const priority = formatPriority(task.priority);
   const completedTime = formatDate(task.completedAt || Date.now());
 
   const message = `任务完成：${task.title}${priority ? `（${priority}）` : ''}，完成时间：${completedTime}`;
 
-  await sendToWebhook(webhookUrl, message);
+  const success = await sendNotificationViaEdgeFunction(owner, message);
+  console.log('[Feishu] 发送结果:', success ? '✓ 成功' : '✗ 失败');
 }
 
 export async function sendTaskDeletedNotification(task: Task): Promise<void> {
@@ -206,20 +147,12 @@ export async function sendTaskDeletedNotification(task: Task): Promise<void> {
   const owner = extractOwnerFromTags(task.tags);
   console.log('[Feishu] 提取的负责人:', owner);
 
-  const webhookUrl = await getWebhookUrl(owner);
-  console.log('[Feishu] 获取的 webhook URL:', webhookUrl ? '已找到' : '未找到');
-
-  if (!webhookUrl) {
-    console.warn(`[Feishu] ⚠️ No webhook found for owner: ${owner}`);
-    return;
-  }
-
   const priority = formatPriority(task.priority);
   const deleteTime = formatDate(Date.now());
 
   const message = `任务删除：${task.title}${priority ? `（${priority}）` : ''}，删除时间：${deleteTime}`;
   console.log('[Feishu] 准备发送消息:', message);
 
-  const success = await sendToWebhook(webhookUrl, message);
+  const success = await sendNotificationViaEdgeFunction(owner, message);
   console.log('[Feishu] 发送结果:', success ? '✓ 成功' : '✗ 失败');
 }
