@@ -12,40 +12,6 @@ interface NotificationRequest {
   message: string;
 }
 
-function createInteractiveCard(message: string) {
-  const lines = message.split('\n').filter(line => line.trim());
-  
-  const title = lines[0] || '通知';
-  const elements: any[] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.trim()) {
-      elements.push({
-        tag: 'div',
-        text: {
-          tag: 'plain_text',
-          content: line
-        }
-      });
-    }
-  }
-
-  return {
-    msg_type: 'interactive',
-    card: {
-      header: {
-        title: {
-          tag: 'plain_text',
-          content: title
-        },
-        template: 'blue'
-      },
-      elements: elements
-    }
-  };
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -94,8 +60,15 @@ Deno.serve(async (req: Request) => {
 
     console.log("[Feishu Edge] 找到 webhook，准备发送...");
 
-    const payload = createInteractiveCard(message);
-    console.log("[Feishu Edge] 卡片消息:", JSON.stringify(payload, null, 2));
+    // 使用简单的 text 消息，一次性发送所有内容
+    const payload = {
+      msg_type: "text",
+      content: {
+        text: message
+      }
+    };
+
+    console.log("[Feishu Edge] 发送消息:", JSON.stringify(payload));
 
     const webhookResponse = await fetch(webhookData.webhook_url, {
       method: "POST",

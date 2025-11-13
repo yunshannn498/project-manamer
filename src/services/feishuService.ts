@@ -87,12 +87,11 @@ export async function sendTaskCreatedNotification(task: Task): Promise<void> {
   const priority = formatPriority(task.priority);
   const dueDateStr = task.dueDate ? formatDate(task.dueDate) : '无';
 
-  let message = `📋 新任务创建\n\n`;
-  message += `任务：${task.title}\n`;
-  if (priority) message += `优先级：${priority}\n`;
-  message += `截止时间：${dueDateStr}`;
+  let message = `📋 新任务创建 | 任务：${task.title}`;
+  if (priority) message += ` | 优先级：${priority}`;
+  message += ` | 截止时间：${dueDateStr}`;
   if (task.description) {
-    message += `\n描述：${task.description}`;
+    message += ` | 描述：${task.description}`;
   }
 
   console.log('[Feishu] 准备发送消息:', message);
@@ -128,10 +127,9 @@ export async function sendTaskUpdatedNotification(oldTask: Task, newTask: Task):
     changes.push(`• 负责人：${oldOwner} → ${newOwner}`);
   }
 
-  let message = `✏️ 任务已更新\n\n`;
-  message += `任务：${newTask.title}\n\n`;
+  let message = `✏️ 任务已更新 | 任务：${newTask.title}`;
   if (changes.length > 0) {
-    message += `变更内容：\n${changes.join('\n')}`;
+    message += ` | 变更：${changes.join(' ')}`;
   }
 
   const success = await sendNotificationViaEdgeFunction(newOwner, message);
@@ -146,10 +144,9 @@ export async function sendTaskCompletedNotification(task: Task): Promise<void> {
   const priority = formatPriority(task.priority);
   const completedTime = formatDate(task.completedAt || Date.now());
 
-  let message = `✅ 任务已完成\n\n`;
-  message += `任务：${task.title}\n`;
-  if (priority) message += `优先级：${priority}\n`;
-  message += `完成时间：${completedTime}`;
+  let message = `✅ 任务已完成 | 任务：${task.title}`;
+  if (priority) message += ` | 优先级：${priority}`;
+  message += ` | 完成时间：${completedTime}`;
 
   const success = await sendNotificationViaEdgeFunction(owner, message);
   console.log('[Feishu] 发送结果:', success ? '✓ 成功' : '✗ 失败');
@@ -165,10 +162,9 @@ export async function sendTaskDeletedNotification(task: Task): Promise<void> {
   const priority = formatPriority(task.priority);
   const deleteTime = formatDate(Date.now());
 
-  let message = `🗑️ 任务已删除\n\n`;
-  message += `任务：${task.title}\n`;
-  if (priority) message += `优先级：${priority}\n`;
-  message += `删除时间：${deleteTime}`;
+  let message = `🗑️ 任务已删除 | 任务：${task.title}`;
+  if (priority) message += ` | 优先级：${priority}`;
+  message += ` | 删除时间：${deleteTime}`;
 
   console.log('[Feishu] 准备发送消息:', message);
 
