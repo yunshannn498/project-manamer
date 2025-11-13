@@ -12,6 +12,56 @@ interface NotificationRequest {
   message: string;
 }
 
+function parseMessageToPost(message: string) {
+  const lines = message.split('\n').filter(line => line.trim());
+  const content: any[][] = [];
+
+  for (const line of lines) {
+    if (line.includes('•')) {
+      content.push([{
+        tag: 'text',
+        text: line
+      }]);
+    } else if (line.includes('：') || line.includes(':')) {
+      const parts = line.split(/[：:]/);
+      if (parts.length === 2) {
+        content.push([
+          {
+            tag: 'text',
+            text: parts[0] + '：'
+          },
+          {
+            tag: 'text',
+            text: parts[1]
+          }
+        ]);
+      } else {
+        content.push([{
+          tag: 'text',
+          text: line
+        }]);
+      }
+    } else {
+      content.push([{
+        tag: 'text',
+        text: line
+      }]);
+    }
+  }
+
+  return {
+    msg_type: 'post',
+    content: {
+      post: {
+        zh_cn: {
+          title: '',
+          content: content
+        }
+      }
+    }
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -60,12 +110,8 @@ Deno.serve(async (req: Request) => {
 
     console.log("[Feishu Edge] 找到 webhook，准备发送...");
 
-    const payload = {
-      msg_type: "text",
-      content: {
-        text: message,
-      },
-    };
+    const payload = parseMessageToPost(message);
+    console.log("[Feishu Edge] 格式化后的消息:", JSON.stringify(payload, null, 2));
 
     const webhookResponse = await fetch(webhookData.webhook_url, {
       method: "POST",
