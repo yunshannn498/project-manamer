@@ -12,52 +12,36 @@ interface NotificationRequest {
   message: string;
 }
 
-function parseMessageToPost(message: string) {
+function createInteractiveCard(message: string) {
   const lines = message.split('\n').filter(line => line.trim());
-  const content: any[][] = [];
+  
+  const title = lines[0] || '通知';
+  const elements: any[] = [];
 
-  for (const line of lines) {
-    if (line.includes('•')) {
-      content.push([{
-        tag: 'text',
-        text: line
-      }]);
-    } else if (line.includes('：') || line.includes(':')) {
-      const parts = line.split(/[：:]/);
-      if (parts.length === 2) {
-        content.push([
-          {
-            tag: 'text',
-            text: parts[0] + '：'
-          },
-          {
-            tag: 'text',
-            text: parts[1]
-          }
-        ]);
-      } else {
-        content.push([{
-          tag: 'text',
-          text: line
-        }]);
-      }
-    } else {
-      content.push([{
-        tag: 'text',
-        text: line
-      }]);
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.trim()) {
+      elements.push({
+        tag: 'div',
+        text: {
+          tag: 'plain_text',
+          content: line
+        }
+      });
     }
   }
 
   return {
-    msg_type: 'post',
-    content: {
-      post: {
-        zh_cn: {
-          title: '',
-          content: content
-        }
-      }
+    msg_type: 'interactive',
+    card: {
+      header: {
+        title: {
+          tag: 'plain_text',
+          content: title
+        },
+        template: 'blue'
+      },
+      elements: elements
     }
   };
 }
@@ -110,8 +94,8 @@ Deno.serve(async (req: Request) => {
 
     console.log("[Feishu Edge] 找到 webhook，准备发送...");
 
-    const payload = parseMessageToPost(message);
-    console.log("[Feishu Edge] 格式化后的消息:", JSON.stringify(payload, null, 2));
+    const payload = createInteractiveCard(message);
+    console.log("[Feishu Edge] 卡片消息:", JSON.stringify(payload, null, 2));
 
     const webhookResponse = await fetch(webhookData.webhook_url, {
       method: "POST",
