@@ -6,16 +6,14 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJ
 interface FeishuMessage {
   msg_type: 'post';
   content: {
-    post: {
-      zh_cn: {
-        title: string;
-        content: Array<Array<{
-          tag: string;
-          text?: string;
-          style?: string[];
-          un_escape?: boolean;
-        }>>;
-      };
+    zh_cn: {
+      title: string;
+      content: Array<Array<{
+        tag: string;
+        text?: string;
+        style?: string[];
+        un_escape?: boolean;
+      }>>;
     };
   };
 }
@@ -133,11 +131,9 @@ export async function sendTaskCreatedNotification(task: Task): Promise<void> {
   const message: FeishuMessage = {
     msg_type: 'post',
     content: {
-      post: {
-        zh_cn: {
-          title: '任务创建通知',
-          content
-        }
+      zh_cn: {
+        title: '任务创建通知',
+        content
       }
     }
   };
@@ -220,11 +216,9 @@ export async function sendTaskUpdatedNotification(oldTask: Task, newTask: Task):
   const message: FeishuMessage = {
     msg_type: 'post',
     content: {
-      post: {
-        zh_cn: {
-          title: '📝 任务更新通知',
-          content
-        }
+      zh_cn: {
+        title: '📝 任务更新通知',
+        content
       }
     }
   };
@@ -265,11 +259,9 @@ export async function sendTaskCompletedNotification(task: Task): Promise<void> {
   const message: FeishuMessage = {
     msg_type: 'post',
     content: {
-      post: {
-        zh_cn: {
-          title: '✅ 任务完成通知',
-          content
-        }
+      zh_cn: {
+        title: '✅ 任务完成通知',
+        content
       }
     }
   };
@@ -313,11 +305,9 @@ export async function sendTaskDeletedNotification(task: Task): Promise<void> {
   const message: FeishuMessage = {
     msg_type: 'post',
     content: {
-      post: {
-        zh_cn: {
-          title: '⚠️ 任务删除通知',
-          content
-        }
+      zh_cn: {
+        title: '⚠️ 任务删除通知',
+        content
       }
     }
   };

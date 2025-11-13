@@ -15,16 +15,14 @@ interface NotificationRequest {
 interface FeishuMessage {
   msg_type: 'post';
   content: {
-    post: {
-      zh_cn: {
-        title: string;
-        content: Array<Array<{
-          tag: string;
-          text?: string;
-          style?: string[];
-          un_escape?: boolean;
-        }>>;
-      };
+    zh_cn: {
+      title: string;
+      content: Array<Array<{
+        tag: string;
+        text?: string;
+        style?: string[];
+        un_escape?: boolean;
+      }>>;
     };
   };
 }
