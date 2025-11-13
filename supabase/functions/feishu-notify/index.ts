@@ -9,7 +9,19 @@ const corsHeaders = {
 
 interface NotificationRequest {
   ownerName: string;
-  message: string;
+  message: string | FeishuPostMessage;
+}
+
+interface FeishuPostMessage {
+  msg_type: 'post';
+  content: {
+    post: {
+      zh_cn: {
+        title: string;
+        content: Array<Array<{ tag: string; text: string; un_escape?: boolean }>>;
+      };
+    };
+  };
 }
 
 Deno.serve(async (req: Request) => {
@@ -27,7 +39,7 @@ Deno.serve(async (req: Request) => {
 
     const { ownerName, message }: NotificationRequest = await req.json();
 
-    console.log("[Feishu Edge] 收到通知请求:", { ownerName, message });
+    console.log("[Feishu Edge] 收到通知请求:", { ownerName, messageType: typeof message });
 
     const { data: webhookData, error: webhookError } = await supabase
       .from("feishu_webhooks")
@@ -60,13 +72,17 @@ Deno.serve(async (req: Request) => {
 
     console.log("[Feishu Edge] 找到 webhook，准备发送...");
 
-    // 使用简单的 text 消息，一次性发送所有内容
-    const payload = {
-      msg_type: "text",
-      content: {
-        text: message
-      }
-    };
+    let payload;
+    if (typeof message === 'string') {
+      payload = {
+        msg_type: "text",
+        content: {
+          text: message
+        }
+      };
+    } else {
+      payload = message;
+    }
 
     console.log("[Feishu Edge] 发送消息:", JSON.stringify(payload));
 
