@@ -9,7 +9,12 @@ interface FeishuMessage {
     post: {
       zh_cn: {
         title: string;
-        content: Array<Array<{ tag: string; text: string; un_escape?: boolean }>>;
+        content: Array<Array<{
+          tag: string;
+          text?: string;
+          style?: string[];
+          un_escape?: boolean;
+        }>>;
       };
     };
   };
@@ -99,16 +104,27 @@ export async function sendTaskCreatedNotification(task: Task): Promise<void> {
   const priority = formatPriority(task.priority);
   const dueDate = formatDate(task.dueDate);
 
-  const content: Array<Array<{ tag: string; text: string }>> = [
-    [{ tag: 'text', text: '✅ 任务已创建' }],
-    [{ tag: 'text', text: `任务名称：${task.title}` }],
+  const content: Array<Array<{ tag: string; text?: string; style?: string[] }>> = [
+    [
+      { tag: 'text', text: '✅ 任务已创建', style: ['bold'] }
+    ],
+    [
+      { tag: 'text', text: '任务名称：' },
+      { tag: 'text', text: task.title, style: ['bold'] }
+    ],
   ];
 
   if (priority) {
-    content.push([{ tag: 'text', text: `优先级：${priority}` }]);
+    content.push([
+      { tag: 'text', text: '优先级：' },
+      { tag: 'text', text: priority, style: ['bold'] }
+    ]);
   }
 
-  content.push([{ tag: 'text', text: `截止时间：${dueDate}` }]);
+  content.push([
+    { tag: 'text', text: '截止时间：' },
+    { tag: 'text', text: dueDate }
+  ]);
 
   if (task.description) {
     content.push([{ tag: 'text', text: `描述：${task.description}` }]);
@@ -135,40 +151,70 @@ export async function sendTaskUpdatedNotification(oldTask: Task, newTask: Task):
 
   const newOwner = extractOwnerFromTags(newTask.tags);
 
-  const content: Array<Array<{ tag: string; text: string }>> = [
-    [{ tag: 'text', text: '✏️ 任务已更新' }],
-    [{ tag: 'text', text: `任务名称：${newTask.title}` }],
+  const content: Array<Array<{ tag: string; text?: string; style?: string[] }>> = [
+    [
+      { tag: 'text', text: '✏️ 任务已更新', style: ['bold'] }
+    ],
+    [
+      { tag: 'text', text: '任务名称：' },
+      { tag: 'text', text: newTask.title, style: ['bold'] }
+    ],
   ];
 
-  const changes: string[] = [];
-  if (oldTask.title !== newTask.title) {
-    changes.push(`标题：${oldTask.title} → ${newTask.title}`);
-  }
-  if (oldTask.priority !== newTask.priority) {
-    const oldPriority = formatPriority(oldTask.priority) || '无';
-    const newPriority = formatPriority(newTask.priority);
-    changes.push(`优先级：${oldPriority} → ${newPriority}`);
-  }
-  if (oldTask.dueDate !== newTask.dueDate) {
-    const oldDate = formatDate(oldTask.dueDate);
-    const newDate = formatDate(newTask.dueDate);
-    changes.push(`截止时间：${oldDate} → ${newDate}`);
-  }
-  if (oldTask.description !== newTask.description) {
-    changes.push('描述已更新');
-  }
-
   const oldOwner = extractOwnerFromTags(oldTask.tags);
-  if (oldOwner !== newOwner) {
-    changes.push(`负责人：${oldOwner} → ${newOwner}`);
-  }
+  const hasChanges = oldTask.title !== newTask.title ||
+                     oldTask.priority !== newTask.priority ||
+                     oldTask.dueDate !== newTask.dueDate ||
+                     oldTask.description !== newTask.description ||
+                     oldOwner !== newOwner;
 
-  if (changes.length > 0) {
-    content.push([{ tag: 'text', text: '' }]);
-    content.push([{ tag: 'text', text: '📝 变更内容：' }]);
-    changes.forEach(change => {
-      content.push([{ tag: 'text', text: `  • ${change}` }]);
-    });
+  if (hasChanges) {
+    content.push([{ tag: 'hr' }]);
+    content.push([{ tag: 'text', text: '📝 变更内容', style: ['bold'] }]);
+
+    if (oldTask.title !== newTask.title) {
+      content.push([
+        { tag: 'text', text: '标题：' },
+        { tag: 'text', text: oldTask.title, style: ['lineThrough'] },
+        { tag: 'text', text: ' → ' },
+        { tag: 'text', text: newTask.title, style: ['bold'] }
+      ]);
+    }
+
+    if (oldTask.priority !== newTask.priority) {
+      const oldPriority = formatPriority(oldTask.priority) || '无';
+      const newPriority = formatPriority(newTask.priority);
+      content.push([
+        { tag: 'text', text: '优先级：' },
+        { tag: 'text', text: oldPriority, style: ['lineThrough'] },
+        { tag: 'text', text: ' → ' },
+        { tag: 'text', text: newPriority, style: ['bold'] }
+      ]);
+    }
+
+    if (oldTask.dueDate !== newTask.dueDate) {
+      const oldDate = formatDate(oldTask.dueDate);
+      const newDate = formatDate(newTask.dueDate);
+      content.push([
+        { tag: 'text', text: '截止时间：' },
+        { tag: 'text', text: oldDate, style: ['lineThrough'] },
+        { tag: 'text', text: ' → ' },
+        { tag: 'text', text: newDate, style: ['bold'] }
+      ]);
+    }
+
+    if (oldTask.description !== newTask.description) {
+      content.push([{ tag: 'text', text: '描述已更新', style: ['italic'] }]);
+    }
+
+    if (oldOwner !== newOwner) {
+      content.push([
+        { tag: 'text', text: '负责人：' },
+        { tag: 'text', text: oldOwner, style: ['lineThrough'] },
+        { tag: 'text', text: ' → ' },
+        { tag: 'text', text: newOwner, style: ['bold'] }
+      ]);
+    }
   }
 
   const message: FeishuMessage = {
@@ -194,16 +240,27 @@ export async function sendTaskCompletedNotification(task: Task): Promise<void> {
   const priority = formatPriority(task.priority);
   const completedTime = formatDate(task.completedAt || Date.now());
 
-  const content: Array<Array<{ tag: string; text: string }>> = [
-    [{ tag: 'text', text: '🎉 任务已完成' }],
-    [{ tag: 'text', text: `任务名称：${task.title}` }],
+  const content: Array<Array<{ tag: string; text?: string; style?: string[] }>> = [
+    [
+      { tag: 'text', text: '🎉 任务已完成', style: ['bold'] }
+    ],
+    [
+      { tag: 'text', text: '任务名称：' },
+      { tag: 'text', text: task.title, style: ['bold'] }
+    ],
   ];
 
   if (priority) {
-    content.push([{ tag: 'text', text: `优先级：${priority}` }]);
+    content.push([
+      { tag: 'text', text: '优先级：' },
+      { tag: 'text', text: priority }
+    ]);
   }
 
-  content.push([{ tag: 'text', text: `完成时间：${completedTime}` }]);
+  content.push([
+    { tag: 'text', text: '完成时间：' },
+    { tag: 'text', text: completedTime }
+  ]);
 
   const message: FeishuMessage = {
     msg_type: 'post',
@@ -231,16 +288,27 @@ export async function sendTaskDeletedNotification(task: Task): Promise<void> {
   const priority = formatPriority(task.priority);
   const deleteTime = formatDate(Date.now());
 
-  const content: Array<Array<{ tag: string; text: string }>> = [
-    [{ tag: 'text', text: '🗑️ 任务已删除' }],
-    [{ tag: 'text', text: `任务名称：${task.title}` }],
+  const content: Array<Array<{ tag: string; text?: string; style?: string[] }>> = [
+    [
+      { tag: 'text', text: '🗑️ 任务已删除', style: ['bold'] }
+    ],
+    [
+      { tag: 'text', text: '任务名称：' },
+      { tag: 'text', text: task.title, style: ['bold', 'lineThrough'] }
+    ],
   ];
 
   if (priority) {
-    content.push([{ tag: 'text', text: `优先级：${priority}` }]);
+    content.push([
+      { tag: 'text', text: '优先级：' },
+      { tag: 'text', text: priority }
+    ]);
   }
 
-  content.push([{ tag: 'text', text: `删除时间：${deleteTime}` }]);
+  content.push([
+    { tag: 'text', text: '删除时间：' },
+    { tag: 'text', text: deleteTime }
+  ]);
 
   const message: FeishuMessage = {
     msg_type: 'post',

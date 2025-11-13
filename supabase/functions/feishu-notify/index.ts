@@ -18,7 +18,12 @@ interface FeishuMessage {
     post: {
       zh_cn: {
         title: string;
-        content: Array<Array<{ tag: string; text: string; un_escape?: boolean }>>;
+        content: Array<Array<{
+          tag: string;
+          text?: string;
+          style?: string[];
+          un_escape?: boolean;
+        }>>;
       };
     };
   };
