@@ -9,22 +9,7 @@ const corsHeaders = {
 
 interface NotificationRequest {
   ownerName: string;
-  message: FeishuMessage;
-}
-
-interface FeishuMessage {
-  msg_type: 'post';
-  content: {
-    zh_cn: {
-      title: string;
-      content: Array<Array<{
-        tag: string;
-        text?: string;
-        style?: string[];
-        un_escape?: boolean;
-      }>>;
-    };
-  };
+  message: string;
 }
 
 Deno.serve(async (req: Request) => {
@@ -74,14 +59,20 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log("[Feishu Edge] 找到 webhook，准备发送...");
-    console.log("[Feishu Edge] 发送飞书消息:", JSON.stringify(message));
+
+    const payload = {
+      msg_type: "text",
+      content: {
+        text: message,
+      },
+    };
 
     const webhookResponse = await fetch(webhookData.webhook_url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(message),
+      body: JSON.stringify(payload),
     });
 
     const responseText = await webhookResponse.text();
