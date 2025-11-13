@@ -14,6 +14,7 @@ import { ListTodo, Search, ChevronDown, Download, History } from 'lucide-react';
 import NetworkStatus from './components/NetworkStatus';
 import ImportExportModal from './components/ImportExportModal';
 import OperationLogsModal from './components/OperationLogsModal';
+import { sendTaskCreatedNotification, sendTaskUpdatedNotification, sendTaskCompletedNotification, sendTaskDeletedNotification } from './services/feishuService';
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -363,6 +364,10 @@ function App() {
         userInfo
       );
 
+      sendTaskCreatedNotification(newTask).catch(err => {
+        console.warn('[创建任务] Feishu notification failed:', err);
+      });
+
       console.log('=== [创建任务] 完成（成功）===');
     }
   };
@@ -436,8 +441,13 @@ function App() {
           },
           userInfo
         );
+
+        sendTaskDeletedNotification(deletedTaskRef).catch(err => {
+          console.warn('[删除任务] Feishu notification failed:', err);
+        });
       }
 
+      setToast({ message: '任务已删除', type: 'updated' });
       console.log('=== [删除任务] 完成（成功）===');
     }
   };
@@ -543,6 +553,17 @@ function App() {
           changes,
           userInfo
         );
+
+        const wasCompleted = oldTaskRef.status !== 'done' && updatedTask.status === 'done';
+        if (wasCompleted) {
+          sendTaskCompletedNotification(updatedTask).catch(err => {
+            console.warn('[更新任务] Feishu completion notification failed:', err);
+          });
+        } else {
+          sendTaskUpdatedNotification(oldTaskRef, updatedTask).catch(err => {
+            console.warn('[更新任务] Feishu update notification failed:', err);
+          });
+        }
       }
 
       console.log('=== [更新任务] 完成（成功）===');

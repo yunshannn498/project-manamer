@@ -521,6 +521,105 @@ class DatabaseService {
       };
     }
   }
+
+  async getWebhookByOwner(ownerName: string): Promise<DatabaseOperationResult<{ webhook_url: string; is_enabled: boolean } | null>> {
+    console.log('[DB Service] Getting webhook for owner:', ownerName);
+
+    try {
+      const { data, error } = await supabase
+        .from('feishu_webhooks')
+        .select('webhook_url, is_enabled')
+        .eq('owner_name', ownerName)
+        .eq('is_enabled', true)
+        .maybeSingle();
+
+      if (error) {
+        console.error('[DB Service] ❌ Error fetching webhook:', error.message);
+
+        if (this.isNetworkError(error)) {
+          this.isOnline = false;
+          return {
+            data: null,
+            error: new Error('Network connection failed'),
+            isOffline: true
+          };
+        }
+
+        return {
+          data: null,
+          error: new Error(error.message),
+          isOffline: false
+        };
+      }
+
+      console.log(`[DB Service] ✓ Webhook lookup result:`, data ? 'found' : 'not found');
+      return {
+        data: data || null,
+        error: null,
+        isOffline: false
+      };
+    } catch (err) {
+      console.error('[DB Service] ❌ Exception while fetching webhook:', err);
+      this.isOnline = false;
+
+      return {
+        data: null,
+        error: err instanceof Error ? err : new Error('Unknown error'),
+        isOffline: true
+      };
+    }
+  }
+
+  async getAllWebhooks(): Promise<DatabaseOperationResult<Array<{ owner_name: string; webhook_url: string; is_enabled: boolean }>>> {
+    console.log('[DB Service] Getting all webhooks...');
+
+    try {
+      const { data, error } = await supabase
+        .from('feishu_webhooks')
+        .select('owner_name, webhook_url, is_enabled')
+        .order('owner_name', { ascending: true });
+
+      if (error) {
+        console.error('[DB Service] ❌ Error fetching webhooks:', error.message);
+
+        if (this.isNetworkError(error)) {
+          this.isOnline = false;
+          return {
+            data: null,
+            error: new Error('Network connection failed'),
+            isOffline: true
+          };
+        }
+
+        return {
+          data: null,
+          error: new Error(error.message),
+          isOffline: false
+        };
+      }
+
+      if (!data) {
+        console.log('[DB Service] ✓ No webhooks found, returning empty array');
+        return { data: [], error: null, isOffline: false };
+      }
+
+      console.log(`[DB Service] ✓ Retrieved ${data.length} webhook configurations`);
+      return {
+        data,
+        error: null,
+        isOffline: false
+      };
+    } catch (err) {
+      console.error('[DB Service] ❌ Exception while fetching webhooks:', err);
+      this.isOnline = false;
+
+      return {
+        data: null,
+        error: err instanceof Error ? err : new Error('Unknown error'),
+        isOffline: true
+      };
+    }
+  }
 }
 
 export const databaseService = new DatabaseService();
