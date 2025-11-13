@@ -9,18 +9,19 @@ const corsHeaders = {
 
 interface NotificationRequest {
   ownerName: string;
-  payload: NotificationPayload;
+  message: FeishuMessage;
 }
 
-interface NotificationPayload {
-  notification_type: 'created' | 'updated' | 'completed' | 'deleted';
-  task_title: string;
-  priority?: string;
-  due_date?: string;
-  description?: string;
-  changes?: string[];
-  completed_at?: string;
-  deleted_at?: string;
+interface FeishuMessage {
+  msg_type: 'post';
+  content: {
+    post: {
+      zh_cn: {
+        title: string;
+        content: Array<Array<{ tag: string; text: string; un_escape?: boolean }>>;
+      };
+    };
+  };
 }
 
 Deno.serve(async (req: Request) => {
@@ -36,9 +37,9 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { ownerName, payload }: NotificationRequest = await req.json();
+    const { ownerName, message }: NotificationRequest = await req.json();
 
-    console.log("[Feishu Edge] 收到通知请求:", { ownerName, payload });
+    console.log("[Feishu Edge] 收到通知请求:", { ownerName, message });
 
     const { data: webhookData, error: webhookError } = await supabase
       .from("feishu_webhooks")
@@ -70,14 +71,14 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log("[Feishu Edge] 找到 webhook，准备发送...");
-    console.log("[Feishu Edge] 发送 JSON 数据:", JSON.stringify(payload));
+    console.log("[Feishu Edge] 发送飞书消息:", JSON.stringify(message));
 
     const webhookResponse = await fetch(webhookData.webhook_url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(message),
     });
 
     const responseText = await webhookResponse.text();
