@@ -85,9 +85,16 @@ export async function sendTaskCreatedNotification(task: Task): Promise<void> {
   console.log('[Feishu] 提取的负责人:', owner);
 
   const priority = formatPriority(task.priority);
-  const dueDate = task.dueDate ? `，截止时间：${formatDate(task.dueDate)}` : '';
+  const dueDateStr = task.dueDate ? formatDate(task.dueDate) : '无';
 
-  const message = `任务创建：${task.title}${priority ? `（${priority}）` : ''}${dueDate}`;
+  let message = `📋 新任务创建\n\n`;
+  message += `任务：${task.title}\n`;
+  if (priority) message += `优先级：${priority}\n`;
+  message += `截止时间：${dueDateStr}`;
+  if (task.description) {
+    message += `\n描述：${task.description}`;
+  }
+
   console.log('[Feishu] 准备发送消息:', message);
 
   const success = await sendNotificationViaEdgeFunction(owner, message);
@@ -102,25 +109,30 @@ export async function sendTaskUpdatedNotification(oldTask: Task, newTask: Task):
   const changes: string[] = [];
 
   if (oldTask.title !== newTask.title) {
-    changes.push(`标题变更`);
+    changes.push(`• 标题：${oldTask.title} → ${newTask.title}`);
   }
   if (oldTask.priority !== newTask.priority) {
-    changes.push(`优先级变更为${formatPriority(newTask.priority)}`);
+    changes.push(`• 优先级：${formatPriority(oldTask.priority) || '无'} → ${formatPriority(newTask.priority)}`);
   }
   if (oldTask.dueDate !== newTask.dueDate) {
-    changes.push(`截止时间变更`);
+    const oldDate = oldTask.dueDate ? formatDate(oldTask.dueDate) : '无';
+    const newDate = newTask.dueDate ? formatDate(newTask.dueDate) : '无';
+    changes.push(`• 截止时间：${oldDate} → ${newDate}`);
   }
   if (oldTask.description !== newTask.description) {
-    changes.push(`描述已更新`);
+    changes.push(`• 描述已更新`);
   }
 
   const oldOwner = extractOwnerFromTags(oldTask.tags);
   if (oldOwner !== newOwner) {
-    changes.push(`负责人变更为${newOwner}`);
+    changes.push(`• 负责人：${oldOwner} → ${newOwner}`);
   }
 
-  const changeText = changes.length > 0 ? `（${changes.join('，')}）` : '';
-  const message = `任务更新：${newTask.title}${changeText}`;
+  let message = `✏️ 任务已更新\n\n`;
+  message += `任务：${newTask.title}\n\n`;
+  if (changes.length > 0) {
+    message += `变更内容：\n${changes.join('\n')}`;
+  }
 
   const success = await sendNotificationViaEdgeFunction(newOwner, message);
   console.log('[Feishu] 发送结果:', success ? '✓ 成功' : '✗ 失败');
@@ -134,7 +146,10 @@ export async function sendTaskCompletedNotification(task: Task): Promise<void> {
   const priority = formatPriority(task.priority);
   const completedTime = formatDate(task.completedAt || Date.now());
 
-  const message = `任务完成：${task.title}${priority ? `（${priority}）` : ''}，完成时间：${completedTime}`;
+  let message = `✅ 任务已完成\n\n`;
+  message += `任务：${task.title}\n`;
+  if (priority) message += `优先级：${priority}\n`;
+  message += `完成时间：${completedTime}`;
 
   const success = await sendNotificationViaEdgeFunction(owner, message);
   console.log('[Feishu] 发送结果:', success ? '✓ 成功' : '✗ 失败');
@@ -150,7 +165,11 @@ export async function sendTaskDeletedNotification(task: Task): Promise<void> {
   const priority = formatPriority(task.priority);
   const deleteTime = formatDate(Date.now());
 
-  const message = `任务删除：${task.title}${priority ? `（${priority}）` : ''}，删除时间：${deleteTime}`;
+  let message = `🗑️ 任务已删除\n\n`;
+  message += `任务：${task.title}\n`;
+  if (priority) message += `优先级：${priority}\n`;
+  message += `删除时间：${deleteTime}`;
+
   console.log('[Feishu] 准备发送消息:', message);
 
   const success = await sendNotificationViaEdgeFunction(owner, message);
