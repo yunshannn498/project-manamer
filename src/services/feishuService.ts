@@ -106,18 +106,18 @@ export async function sendTaskCreatedNotification(task: Task): Promise<void> {
 
   const content: Array<Array<{ tag: string; text?: string; style?: string[] }>> = [
     [
-      { tag: 'text', text: '✅ 任务已创建', style: ['bold'] }
+      { tag: 'text', text: '✅ 任务已创建' }
     ],
     [
       { tag: 'text', text: '任务名称：' },
-      { tag: 'text', text: task.title, style: ['bold'] }
+      { tag: 'text', text: task.title }
     ],
   ];
 
   if (priority) {
     content.push([
       { tag: 'text', text: '优先级：' },
-      { tag: 'text', text: priority, style: ['bold'] }
+      { tag: 'text', text: priority }
     ]);
   }
 
@@ -135,7 +135,7 @@ export async function sendTaskCreatedNotification(task: Task): Promise<void> {
     content: {
       post: {
         zh_cn: {
-          title: '📋 任务创建通知',
+          title: '任务创建通知',
           content
         }
       }
