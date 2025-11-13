@@ -10,86 +10,6 @@ const corsHeaders = {
 interface NotificationRequest {
   ownerName: string;
   message: string;
-  taskTitle?: string;
-  priority?: string;
-  dueDate?: string;
-}
-
-interface FeishuWebhookData {
-  webhook_url: string;
-  is_enabled: boolean;
-  open_id: string | null;
-  enable_mention: boolean;
-}
-
-function buildTextMessage(message: string) {
-  return {
-    msg_type: "text",
-    content: {
-      text: message,
-    },
-  };
-}
-
-function buildRichTextMessage(
-  message: string,
-  taskTitle: string,
-  openId: string,
-  priority?: string,
-  dueDate?: string
-) {
-  const contentLines: any[][] = [];
-
-  const firstLine: any[] = [
-    {
-      tag: "text",
-      text: message,
-    },
-  ];
-  contentLines.push(firstLine);
-
-  const mentionLine: any[] = [
-    {
-      tag: "at",
-      user_id: openId,
-    },
-  ];
-  contentLines.push(mentionLine);
-
-  if (priority || dueDate) {
-    const detailLine: any[] = [];
-    if (priority) {
-      detailLine.push({
-        tag: "text",
-        text: `优先级：${priority}`,
-      });
-    }
-    if (dueDate) {
-      if (detailLine.length > 0) {
-        detailLine.push({
-          tag: "text",
-          text: " | ",
-        });
-      }
-      detailLine.push({
-        tag: "text",
-        text: `截止时间：${dueDate}`,
-      });
-    }
-    contentLines.push(detailLine);
-  }
-
-  return {
-    msg_type: "post",
-    content: {
-      post: {
-        zh_cn: {
-          title: "任务通知",
-          content: contentLines,
-        },
-      },
-    },
-  };
 }
 
 Deno.serve(async (req: Request) => {
@@ -105,14 +25,13 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const requestData: NotificationRequest = await req.json();
-    const { ownerName, message, taskTitle, priority, dueDate } = requestData;
+    const { ownerName, message }: NotificationRequest = await req.json();
 
-    console.log("[Feishu Edge] 收到通知请求:", { ownerName, message, taskTitle });
+    console.log("[Feishu Edge] 收到通知请求:", { ownerName, message });
 
     const { data: webhookData, error: webhookError } = await supabase
       .from("feishu_webhooks")
-      .select("webhook_url, is_enabled, open_id, enable_mention")
+      .select("webhook_url, is_enabled")
       .eq("owner_name", ownerName)
       .eq("is_enabled", true)
       .maybeSingle();
@@ -139,35 +58,16 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const typedWebhookData = webhookData as FeishuWebhookData;
+    console.log("[Feishu Edge] 找到 webhook，准备发送...");
 
-    console.log("[Feishu Edge] Webhook 配置:", {
-      hasOpenId: !!typedWebhookData.open_id,
-      enableMention: typedWebhookData.enable_mention,
-    });
+    const payload = {
+      msg_type: "text",
+      content: {
+        text: message,
+      },
+    };
 
-    let payload;
-    const shouldUseMention =
-      typedWebhookData.enable_mention &&
-      typedWebhookData.open_id &&
-      taskTitle;
-
-    if (shouldUseMention) {
-      console.log("[Feishu Edge] 使用富文本 @人格式");
-      payload = buildRichTextMessage(
-        message,
-        taskTitle,
-        typedWebhookData.open_id!,
-        priority,
-        dueDate
-      );
-    } else {
-      console.log("[Feishu Edge] 使用简单文本格式");
-      payload = buildTextMessage(message);
-    }
-
-    console.log("[Feishu Edge] 发送消息到飞书...");
-    const webhookResponse = await fetch(typedWebhookData.webhook_url, {
+    const webhookResponse = await fetch(webhookData.webhook_url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -179,31 +79,6 @@ Deno.serve(async (req: Request) => {
     console.log("[Feishu Edge] 飞书响应:", webhookResponse.status, responseText);
 
     if (!webhookResponse.ok) {
-      if (shouldUseMention) {
-        console.log("[Feishu Edge] 富文本失败，尝试降级为简单文本...");
-        const fallbackPayload = buildTextMessage(message);
-        const fallbackResponse = await fetch(typedWebhookData.webhook_url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(fallbackPayload),
-        });
-
-        const fallbackText = await fallbackResponse.text();
-        console.log("[Feishu Edge] 降级发送结果:", fallbackResponse.status, fallbackText);
-
-        if (fallbackResponse.ok) {
-          return new Response(
-            JSON.stringify({ success: true, fallback: true, response: fallbackText }),
-            {
-              status: 200,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            }
-          );
-        }
-      }
-
       return new Response(
         JSON.stringify({
           success: false,
@@ -219,7 +94,7 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, usedMention: shouldUseMention, response: responseText }),
+      JSON.stringify({ success: true, response: responseText }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
