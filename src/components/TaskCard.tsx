@@ -213,9 +213,17 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete, isDeleting = fa
               onChange={(e) => setEditOwner(e.target.value)}
               className="w-full px-3 py-2 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-primary-200 focus:border-primary-400 text-base transition-all duration-300"
             >
-              <option value="阿伟">阿伟</option>
-              <option value="choco">choco</option>
-              <option value="05">05</option>
+              {availableOwners.length > 0 ? (
+                availableOwners.map(owner => (
+                  <option key={owner} value={owner}>{owner}</option>
+                ))
+              ) : (
+                <>
+                  <option value="阿伟">阿伟</option>
+                  <option value="choco">choco</option>
+                  <option value="05">05</option>
+                </>
+              )}
             </select>
           </div>
 
