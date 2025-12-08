@@ -10,10 +10,11 @@ import { parseTaskIntent as parseTaskIntentLocal } from './services/semanticPars
 import { testDatabaseConnection } from './lib/supabase';
 import { databaseService } from './services/databaseService';
 import { saveTasksToLocal, loadTasksFromLocal } from './storage';
-import { ListTodo, Search, ChevronDown, Download, History } from 'lucide-react';
+import { ListTodo, Search, ChevronDown, Download, History, MoreVertical, Users } from 'lucide-react';
 import NetworkStatus from './components/NetworkStatus';
 import ImportExportModal from './components/ImportExportModal';
 import OperationLogsModal from './components/OperationLogsModal';
+import OwnerManagementModal from './components/OwnerManagementModal';
 import { sendTaskCreatedNotification, sendTaskUpdatedNotification, sendTaskCompletedNotification, sendTaskDeletedNotification } from './services/feishuService';
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
   const [showOwnerMenu, setShowOwnerMenu] = useState(false);
   const [showDateMenu, setShowDateMenu] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
   const [deleteConfirmData, setDeleteConfirmData] = useState<{ taskId: string; taskTitle: string } | null>(null);
@@ -35,6 +37,7 @@ function App() {
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
   const [showImportExportModal, setShowImportExportModal] = useState(false);
   const [showOperationLogsModal, setShowOperationLogsModal] = useState(false);
+  const [showOwnerManagementModal, setShowOwnerManagementModal] = useState(false);
   const lastScrollY = useRef(0);
   const scrollThreshold = 50;
 
@@ -681,20 +684,56 @@ function App() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowOperationLogsModal(true)}
-                className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 px-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-300 border border-gray-200 hover:border-gray-300"
-              >
-                <History size={16} />
-                <span className="hidden md:inline">操作记录</span>
-              </button>
-              <button
-                onClick={() => setShowImportExportModal(true)}
-                className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 px-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-300 border border-gray-200 hover:border-gray-300"
-              >
-                <Download size={16} />
-                <span className="hidden md:inline">导入/导出</span>
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowMoreMenu(!showMoreMenu)}
+                  className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-800 p-2 rounded-xl text-sm font-medium transition-all duration-300 border border-gray-200 hover:border-gray-300"
+                  title="更多"
+                >
+                  <MoreVertical size={20} />
+                </button>
+
+                {showMoreMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-30"
+                      onClick={() => setShowMoreMenu(false)}
+                    />
+                    <div className="absolute top-full right-0 mt-2 bg-white border-2 border-primary-200 rounded-2xl shadow-xl overflow-hidden z-40 w-48 animate-slide-up">
+                      <button
+                        onClick={() => {
+                          setShowOperationLogsModal(true);
+                          setShowMoreMenu(false);
+                        }}
+                        className="w-full px-4 py-3 text-left hover:bg-orange-50 text-sm text-gray-700 transition-all duration-200 font-medium flex items-center gap-2"
+                      >
+                        <History size={16} className="text-primary-500" />
+                        操作记录
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowImportExportModal(true);
+                          setShowMoreMenu(false);
+                        }}
+                        className="w-full px-4 py-3 text-left hover:bg-orange-50 text-sm text-gray-700 transition-all duration-200 font-medium flex items-center gap-2"
+                      >
+                        <Download size={16} className="text-primary-500" />
+                        导入/导出
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowOwnerManagementModal(true);
+                          setShowMoreMenu(false);
+                        }}
+                        className="w-full px-4 py-3 text-left hover:bg-orange-50 text-sm text-gray-700 transition-all duration-200 font-medium flex items-center gap-2"
+                      >
+                        <Users size={16} className="text-primary-500" />
+                        负责人维护
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
               <NetworkStatus
                 isOffline={isOfflineMode}
                 onReconnect={async () => {
@@ -1050,6 +1089,11 @@ function App() {
       <OperationLogsModal
         isOpen={showOperationLogsModal}
         onClose={() => setShowOperationLogsModal(false)}
+      />
+
+      <OwnerManagementModal
+        isOpen={showOwnerManagementModal}
+        onClose={() => setShowOwnerManagementModal(false)}
       />
     </div>
   );

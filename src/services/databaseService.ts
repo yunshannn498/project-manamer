@@ -620,6 +620,228 @@ class DatabaseService {
       };
     }
   }
+
+  async getAllOwners(): Promise<DatabaseOperationResult<Array<{ owner_name: string; webhook_url: string; open_id: string; is_enabled: boolean }>>> {
+    console.log('[DB Service] Getting all owners...');
+
+    try {
+      const { data, error } = await supabase
+        .from('feishu_webhooks')
+        .select('owner_name, webhook_url, open_id, is_enabled')
+        .order('owner_name', { ascending: true });
+
+      if (error) {
+        console.error('[DB Service] ❌ Error fetching owners:', error.message);
+
+        if (this.isNetworkError(error)) {
+          this.isOnline = false;
+          return {
+            data: null,
+            error: new Error('Network connection failed'),
+            isOffline: true
+          };
+        }
+
+        return {
+          data: null,
+          error: new Error(error.message),
+          isOffline: false
+        };
+      }
+
+      if (!data) {
+        console.log('[DB Service] ✓ No owners found, returning empty array');
+        return { data: [], error: null, isOffline: false };
+      }
+
+      console.log(`[DB Service] ✓ Retrieved ${data.length} owners`);
+      return {
+        data,
+        error: null,
+        isOffline: false
+      };
+    } catch (err) {
+      console.error('[DB Service] ❌ Exception while fetching owners:', err);
+      this.isOnline = false;
+
+      return {
+        data: null,
+        error: err instanceof Error ? err : new Error('Unknown error'),
+        isOffline: true
+      };
+    }
+  }
+
+  async createOwner(owner: { owner_name: string; webhook_url: string; open_id: string; is_enabled: boolean }): Promise<DatabaseOperationResult<boolean>> {
+    console.log('[DB Service] Creating owner:', owner.owner_name);
+
+    if (!this.isOnline) {
+      return {
+        data: null,
+        error: new Error('Database is offline'),
+        isOffline: true
+      };
+    }
+
+    try {
+      const { error } = await supabase
+        .from('feishu_webhooks')
+        .insert({
+          owner_name: owner.owner_name,
+          webhook_url: owner.webhook_url,
+          open_id: owner.open_id || null,
+          is_enabled: owner.is_enabled
+        });
+
+      if (error) {
+        console.error('[DB Service] ❌ Error creating owner:', error.message);
+
+        if (this.isNetworkError(error)) {
+          this.isOnline = false;
+          return {
+            data: null,
+            error: new Error('Network connection failed'),
+            isOffline: true
+          };
+        }
+
+        return {
+          data: null,
+          error: new Error(error.message),
+          isOffline: false
+        };
+      }
+
+      console.log('[DB Service] ✓ Owner created:', owner.owner_name);
+      return {
+        data: true,
+        error: null,
+        isOffline: false
+      };
+    } catch (err) {
+      console.error('[DB Service] ❌ Exception while creating owner:', err);
+      this.isOnline = false;
+
+      return {
+        data: null,
+        error: err instanceof Error ? err : new Error('Unknown error'),
+        isOffline: true
+      };
+    }
+  }
+
+  async updateOwner(ownerName: string, updates: { webhook_url?: string; open_id?: string; is_enabled?: boolean }): Promise<DatabaseOperationResult<boolean>> {
+    console.log('[DB Service] Updating owner:', ownerName);
+
+    if (!this.isOnline) {
+      return {
+        data: null,
+        error: new Error('Database is offline'),
+        isOffline: true
+      };
+    }
+
+    try {
+      const updateData: Record<string, unknown> = {};
+      if (updates.webhook_url !== undefined) updateData.webhook_url = updates.webhook_url;
+      if (updates.open_id !== undefined) updateData.open_id = updates.open_id || null;
+      if (updates.is_enabled !== undefined) updateData.is_enabled = updates.is_enabled;
+
+      const { error } = await supabase
+        .from('feishu_webhooks')
+        .update(updateData)
+        .eq('owner_name', ownerName);
+
+      if (error) {
+        console.error('[DB Service] ❌ Error updating owner:', error.message);
+
+        if (this.isNetworkError(error)) {
+          this.isOnline = false;
+          return {
+            data: null,
+            error: new Error('Network connection failed'),
+            isOffline: true
+          };
+        }
+
+        return {
+          data: null,
+          error: new Error(error.message),
+          isOffline: false
+        };
+      }
+
+      console.log('[DB Service] ✓ Owner updated:', ownerName);
+      return {
+        data: true,
+        error: null,
+        isOffline: false
+      };
+    } catch (err) {
+      console.error('[DB Service] ❌ Exception while updating owner:', err);
+      this.isOnline = false;
+
+      return {
+        data: null,
+        error: err instanceof Error ? err : new Error('Unknown error'),
+        isOffline: true
+      };
+    }
+  }
+
+  async deleteOwner(ownerName: string): Promise<DatabaseOperationResult<boolean>> {
+    console.log('[DB Service] Deleting owner:', ownerName);
+
+    if (!this.isOnline) {
+      return {
+        data: null,
+        error: new Error('Database is offline'),
+        isOffline: true
+      };
+    }
+
+    try {
+      const { error } = await supabase
+        .from('feishu_webhooks')
+        .delete()
+        .eq('owner_name', ownerName);
+
+      if (error) {
+        console.error('[DB Service] ❌ Error deleting owner:', error.message);
+
+        if (this.isNetworkError(error)) {
+          this.isOnline = false;
+          return {
+            data: null,
+            error: new Error('Network connection failed'),
+            isOffline: true
+          };
+        }
+
+        return {
+          data: null,
+          error: new Error(error.message),
+          isOffline: false
+        };
+      }
+
+      console.log('[DB Service] ✓ Owner deleted:', ownerName);
+      return {
+        data: true,
+        error: null,
+        isOffline: false
+      };
+    } catch (err) {
+      console.error('[DB Service] ❌ Exception while deleting owner:', err);
+      this.isOnline = false;
+
+      return {
+        data: null,
+        error: err instanceof Error ? err : new Error('Unknown error'),
+        isOffline: true
+      };
+    }
+  }
 }
 
 export const databaseService = new DatabaseService();
