@@ -9,9 +9,10 @@ interface TaskCardProps {
   onUpdate: (task: Task) => void;
   onComplete?: () => void;
   isDeleting?: boolean;
+  availableOwners?: string[];
 }
 
-export const TaskCard = ({ task, onDelete, onUpdate, onComplete, isDeleting = false }: TaskCardProps) => {
+export const TaskCard = ({ task, onDelete, onUpdate, onComplete, isDeleting = false, availableOwners = [] }: TaskCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showMobileModal, setShowMobileModal] = useState(false);
@@ -280,6 +281,7 @@ export const TaskCard = ({ task, onDelete, onUpdate, onComplete, isDeleting = fa
         task={task}
         onSave={handleMobileSave}
         onCancel={() => setShowMobileModal(false)}
+        availableOwners={availableOwners}
       />
       <div
         className={`bg-white rounded-2xl shadow-md border-2 border-orange-100 p-4 md:p-3 hover:shadow-xl hover:border-primary-300 cursor-pointer active:scale-[0.98] relative overflow-hidden transition-all duration-300 group ${

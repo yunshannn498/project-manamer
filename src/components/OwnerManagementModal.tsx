@@ -61,7 +61,7 @@ export default function OwnerManagementModal({ isOpen, onClose }: OwnerManagemen
 
   const handleAddOwner = async () => {
     if (!newOwner.owner_name.trim() || !newOwner.webhook_url.trim()) {
-      alert('请填写负责人名称和 Webhook URL');
+      alert('请填写人员名称和 Webhook URL');
       return;
     }
 
@@ -82,7 +82,7 @@ export default function OwnerManagementModal({ isOpen, onClose }: OwnerManagemen
   };
 
   const handleDeleteOwner = async (ownerName: string) => {
-    if (!confirm(`确定要删除负责人"${ownerName}"吗？`)) {
+    if (!confirm(`确定要删除人员"${ownerName}"吗？`)) {
       return;
     }
 
@@ -100,7 +100,7 @@ export default function OwnerManagementModal({ isOpen, onClose }: OwnerManagemen
         <div className="flex items-center justify-between p-6 border-b-2 border-primary-200">
           <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
             <User className="text-primary-500" size={28} />
-            负责人维护
+            人员维护
           </h2>
           <button
             onClick={onClose}
@@ -120,12 +120,12 @@ export default function OwnerManagementModal({ isOpen, onClose }: OwnerManagemen
               <div className="bg-gradient-to-br from-primary-50 to-accent-50 rounded-2xl p-4 border-2 border-primary-200">
                 <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
                   <Plus size={20} className="text-primary-500" />
-                  添加新负责人
+                  添加新人员
                 </h3>
                 <div className="space-y-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      负责人名称 *
+                      人员名称 *
                     </label>
                     <input
                       type="text"
@@ -165,15 +165,15 @@ export default function OwnerManagementModal({ isOpen, onClose }: OwnerManagemen
                     className="w-full bg-gradient-to-r from-primary-500 to-primary-600 text-white px-4 py-2 rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     <Plus size={18} />
-                    添加负责人
+                    添加人员
                   </button>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <h3 className="font-bold text-gray-800 text-lg">现有负责人</h3>
+                <h3 className="font-bold text-gray-800 text-lg">现有人员</h3>
                 {editingOwners.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">暂无负责人</p>
+                  <p className="text-gray-500 text-center py-8">暂无人员</p>
                 ) : (
                   editingOwners.map((owner, index) => (
                     <div

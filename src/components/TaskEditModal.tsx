@@ -7,13 +7,15 @@ interface TaskEditModalProps {
   task: Task;
   onSave: (task: Task) => void;
   onCancel: () => void;
+  availableOwners: string[];
 }
 
 export default function TaskEditModal({
   isOpen,
   task,
   onSave,
-  onCancel
+  onCancel,
+  availableOwners
 }: TaskEditModalProps) {
   const [editTitle, setEditTitle] = useState(task.title);
   const [editDescription, setEditDescription] = useState(task.description || '');
@@ -118,9 +120,13 @@ export default function TaskEditModal({
                 onChange={(e) => setEditOwner(e.target.value)}
                 className="w-full px-3 py-2.5 md:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
               >
-                <option value="阿伟">阿伟</option>
-                <option value="choco">choco</option>
-                <option value="05">05</option>
+                {availableOwners.length > 0 ? (
+                  availableOwners.map(owner => (
+                    <option key={owner} value={owner}>{owner}</option>
+                  ))
+                ) : (
+                  <option value="阿伟">阿伟</option>
+                )}
               </select>
             </div>
 

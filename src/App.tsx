@@ -24,7 +24,8 @@ function App() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'low' | 'medium' | 'high'>('all');
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'thisWeek' | 'noDate'>('all');
-  const [ownerFilter, setOwnerFilter] = useState<'all' | '阿伟' | 'choco' | '05'>('all');
+  const [ownerFilter, setOwnerFilter] = useState<string>('all');
+  const [availableOwners, setAvailableOwners] = useState<string[]>([]);
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
   const [showOwnerMenu, setShowOwnerMenu] = useState(false);
   const [showDateMenu, setShowDateMenu] = useState(false);
@@ -62,9 +63,11 @@ function App() {
           console.log(`[初始化] ✓ 从本地加载 ${localTasks.length} 条任务`);
         }
         setLoadingTasks(false);
+        setAvailableOwners(['阿伟', 'choco', '05']);
       } else {
         console.log('[初始化] ✓ 数据库连接成功');
         await loadTasks('initial');
+        await loadOwners();
       }
     };
 
@@ -76,6 +79,20 @@ function App() {
       }
     };
   }, []);
+
+  const loadOwners = async () => {
+    console.log('[加载负责人] 开始加载...');
+    const result = await databaseService.getAllOwners();
+
+    if (result.data && result.data.length > 0) {
+      const ownerNames = result.data.map(owner => owner.owner_name);
+      console.log('[加载负责人] ✓ 成功:', ownerNames);
+      setAvailableOwners(ownerNames);
+    } else {
+      console.log('[加载负责人] 使用默认值');
+      setAvailableOwners(['阿伟', 'choco', '05']);
+    }
+  };
 
   const handleScroll = useCallback(() => {
     if (window.innerWidth >= 768) {
@@ -728,7 +745,7 @@ function App() {
                         className="w-full px-4 py-3 text-left hover:bg-orange-50 text-sm text-gray-700 transition-all duration-200 font-medium flex items-center gap-2"
                       >
                         <Users size={16} className="text-primary-500" />
-                        负责人维护
+                        人员维护
                       </button>
                     </div>
                   </>
@@ -902,33 +919,18 @@ function App() {
                       >
                         全部负责人
                       </button>
-                      <button
-                        onClick={() => {
-                          setOwnerFilter('阿伟');
-                          setShowOwnerMenu(false);
-                        }}
-                        className="w-full px-3 py-2 text-left hover:bg-primary-50 text-sm text-primary-600 transition-all duration-200 font-medium"
-                      >
-                        阿伟
-                      </button>
-                      <button
-                        onClick={() => {
-                          setOwnerFilter('choco');
-                          setShowOwnerMenu(false);
-                        }}
-                        className="w-full px-3 py-2 text-left hover:bg-primary-50 text-sm text-primary-600 transition-all duration-200 font-medium"
-                      >
-                        choco
-                      </button>
-                      <button
-                        onClick={() => {
-                          setOwnerFilter('05');
-                          setShowOwnerMenu(false);
-                        }}
-                        className="w-full px-3 py-2 text-left hover:bg-primary-50 text-sm text-primary-600 transition-all duration-200 font-medium"
-                      >
-                        05
-                      </button>
+                      {availableOwners.map(owner => (
+                        <button
+                          key={owner}
+                          onClick={() => {
+                            setOwnerFilter(owner);
+                            setShowOwnerMenu(false);
+                          }}
+                          className="w-full px-3 py-2 text-left hover:bg-primary-50 text-sm text-primary-600 transition-all duration-200 font-medium"
+                        >
+                          {owner}
+                        </button>
+                      ))}
                     </div>
                   </>
                 )}
@@ -1053,6 +1055,7 @@ function App() {
                   onUpdate={handleUpdateTask}
                   onComplete={() => handleCompleteTask(task.id)}
                   isDeleting={deletingTaskId === task.id}
+                  availableOwners={availableOwners}
                 />
               </div>
             ))}
@@ -1093,7 +1096,10 @@ function App() {
 
       <OwnerManagementModal
         isOpen={showOwnerManagementModal}
-        onClose={() => setShowOwnerManagementModal(false)}
+        onClose={() => {
+          setShowOwnerManagementModal(false);
+          loadOwners();
+        }}
       />
     </div>
   );
