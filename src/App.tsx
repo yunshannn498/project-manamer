@@ -10,11 +10,12 @@ import { parseTaskIntent as parseTaskIntentLocal } from './services/semanticPars
 import { testDatabaseConnection } from './lib/supabase';
 import { databaseService } from './services/databaseService';
 import { saveTasksToLocal, loadTasksFromLocal } from './storage';
-import { ListTodo, Search, ChevronDown, Download, History, MoreVertical, Users } from 'lucide-react';
+import { ListTodo, Search, ChevronDown, Download, History, MoreVertical, Users, Calendar } from 'lucide-react';
 import NetworkStatus from './components/NetworkStatus';
 import ImportExportModal from './components/ImportExportModal';
 import OperationLogsModal from './components/OperationLogsModal';
 import OwnerManagementModal from './components/OwnerManagementModal';
+import { MonthlyCalendarView } from './components/MonthlyCalendarView';
 import { sendTaskCreatedNotification, sendTaskUpdatedNotification, sendTaskCompletedNotification, sendTaskDeletedNotification } from './services/feishuService';
 
 function App() {
@@ -39,6 +40,7 @@ function App() {
   const [showImportExportModal, setShowImportExportModal] = useState(false);
   const [showOperationLogsModal, setShowOperationLogsModal] = useState(false);
   const [showOwnerManagementModal, setShowOwnerManagementModal] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const lastScrollY = useRef(0);
   const scrollThreshold = 50;
 
@@ -811,6 +813,31 @@ function App() {
 
             <div className="flex gap-3 md:gap-2">
               <button
+                onClick={() => setViewMode('list')}
+                className={`flex-1 py-2.5 md:py-2 px-4 rounded-xl transition-all duration-300 text-sm font-medium active:scale-95 shadow-sm hover:shadow-md flex items-center justify-center gap-2 ${
+                  viewMode === 'list'
+                    ? 'bg-gradient-to-r from-gray-700 to-gray-800 text-white'
+                    : 'bg-white text-gray-600 hover:bg-gradient-to-r hover:from-orange-50 hover:to-amber-50'
+                }`}
+              >
+                <ListTodo size={16} />
+                <span>列表视图</span>
+              </button>
+              <button
+                onClick={() => setViewMode('calendar')}
+                className={`flex-1 py-2.5 md:py-2 px-4 rounded-xl transition-all duration-300 text-sm font-medium active:scale-95 shadow-sm hover:shadow-md flex items-center justify-center gap-2 ${
+                  viewMode === 'calendar'
+                    ? 'bg-gradient-to-r from-gray-700 to-gray-800 text-white'
+                    : 'bg-white text-gray-600 hover:bg-gradient-to-r hover:from-orange-50 hover:to-amber-50'
+                }`}
+              >
+                <Calendar size={16} />
+                <span>月度视图</span>
+              </button>
+            </div>
+
+            <div className="flex gap-3 md:gap-2">
+              <button
                 onClick={() => {
                   setDateFilter('all');
                   setPriorityFilter('all');
@@ -1016,6 +1043,14 @@ function App() {
             </div>
             <p className="text-primary-600 font-medium animate-pulse">加载中...</p>
           </div>
+        ) : viewMode === 'calendar' ? (
+          <MonthlyCalendarView
+            tasks={filteredTasks}
+            onTaskUpdate={handleUpdateTask}
+            onTaskDelete={handleDeleteTask}
+            onTaskComplete={handleCompleteTask}
+            availableOwners={availableOwners}
+          />
         ) : sortedTasks.length === 0 ? (
           <div className="text-center py-16 animate-fade-in">
             <div className="mb-4">
