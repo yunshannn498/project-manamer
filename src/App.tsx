@@ -16,7 +16,7 @@ import ImportExportModal from './components/ImportExportModal';
 import OperationLogsModal from './components/OperationLogsModal';
 import OwnerManagementModal from './components/OwnerManagementModal';
 import { MonthlyCalendarView } from './components/MonthlyCalendarView';
-import { sendTaskCreatedNotification, sendTaskUpdatedNotification, sendTaskCompletedNotification, sendTaskDeletedNotification } from './services/feishuService';
+import { sendTaskCreatedNotification, sendTaskUpdatedNotification, sendTaskCompletedNotification, sendTaskDeletedNotification, checkDueReminders } from './services/feishuService';
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -79,6 +79,29 @@ function App() {
       if (loadTasksTimerRef.current) {
         clearTimeout(loadTasksTimerRef.current);
       }
+    };
+  }, []);
+
+  // Setup reminder check timer - runs every 10 minutes
+  useEffect(() => {
+    console.log('[提醒系统] 启动定时检查...');
+
+    // Initial check after 1 minute
+    const initialTimer = setTimeout(() => {
+      console.log('[提醒系统] 执行初始检查');
+      checkDueReminders();
+    }, 60000);
+
+    // Subsequent checks every 10 minutes
+    const reminderInterval = setInterval(() => {
+      console.log('[提醒系统] 执行定期检查');
+      checkDueReminders();
+    }, 10 * 60 * 1000);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(reminderInterval);
+      console.log('[提醒系统] 清理定时器');
     };
   }, []);
 

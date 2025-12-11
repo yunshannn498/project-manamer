@@ -158,3 +158,29 @@ export async function sendTaskDeletedNotification(task: Task): Promise<void> {
   const success = await sendNotificationViaEdgeFunction(owner, message);
   console.log('[Feishu] 发送结果:', success ? '✓ 成功' : '✗ 失败');
 }
+
+export async function checkDueReminders(): Promise<void> {
+  try {
+    const edgeFunctionUrl = `${SUPABASE_URL}/functions/v1/check-due-reminders`;
+
+    console.log('[Feishu] 🔔 检查即将过期的任务提醒');
+
+    const response = await fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      signal: AbortSignal.timeout(30000)
+    });
+
+    const responseData = await response.json();
+    console.log('[Feishu] 提醒检查结果:', responseData);
+
+    if (responseData.success && responseData.reminders_sent > 0) {
+      console.log(`[Feishu] ✓ 成功发送 ${responseData.reminders_sent} 条提醒`);
+    }
+  } catch (error) {
+    console.error('[Feishu] ❌ 检查提醒失败:', error);
+  }
+}

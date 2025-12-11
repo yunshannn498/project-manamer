@@ -194,6 +194,13 @@ class DatabaseService {
     }
 
     try {
+      // First, get the current task to check if due_date is changing
+      const { data: currentTask } = await supabase
+        .from('tasks')
+        .select('due_date')
+        .eq('id', taskId)
+        .maybeSingle();
+
       const updateData: Record<string, unknown> = {};
 
       if (updates.title !== undefined) updateData.title = updates.title;
@@ -203,6 +210,15 @@ class DatabaseService {
       if (updates.tags !== undefined) updateData.tags = updates.tags;
       if (updates.dueDate !== undefined) {
         updateData.due_date = updates.dueDate ? new Date(updates.dueDate).toISOString() : null;
+
+        // Check if due_date is changing
+        const oldDueDate = currentTask?.due_date;
+        const newDueDate = updateData.due_date;
+
+        if (oldDueDate !== newDueDate) {
+          console.log('[DB Service] Due date changed, resetting last_reminder_sent');
+          updateData.last_reminder_sent = null;
+        }
       }
 
       const { data, error } = await supabase
