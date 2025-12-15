@@ -1,28 +1,43 @@
 import { useState, useMemo } from 'react';
-import { Task } from '../types';
+import { Task, Milestone } from '../types';
 import { getMonthCalendar, getMonthName, getDayName, isOverdue, getTasksWithoutDueDate, CalendarDay } from '../utils/calendarUtils';
 import { ChevronLeft, ChevronRight, Clock, User, X, Check } from 'lucide-react';
 import TaskEditModal from './TaskEditModal';
+import { DayDetailModal } from './DayDetailModal';
 
 interface MonthlyCalendarViewProps {
   tasks: Task[];
+  milestones: Milestone[];
   onTaskUpdate: (task: Task) => void;
   onTaskDelete: (taskId: string) => void;
   onTaskComplete: (taskId: string) => void;
+  onMilestoneCreate: (milestone: Omit<Milestone, 'id' | 'createdAt'>) => void;
+  onMilestoneUpdate: (milestone: Milestone) => void;
+  onMilestoneDelete: (milestoneId: string) => void;
   availableOwners?: string[];
 }
 
-export function MonthlyCalendarView({ tasks, onTaskUpdate, onTaskDelete, onTaskComplete, availableOwners = [] }: MonthlyCalendarViewProps) {
+export function MonthlyCalendarView({
+  tasks,
+  milestones,
+  onTaskUpdate,
+  onTaskDelete,
+  onTaskComplete,
+  onMilestoneCreate,
+  onMilestoneUpdate,
+  onMilestoneDelete,
+  availableOwners = []
+}: MonthlyCalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
 
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
 
   const calendar = useMemo(() => {
-    return getMonthCalendar(currentYear, currentMonth, tasks);
-  }, [currentYear, currentMonth, tasks]);
+    return getMonthCalendar(currentYear, currentMonth, tasks, milestones);
+  }, [currentYear, currentMonth, tasks, milestones]);
 
   const tasksWithoutDate = useMemo(() => {
     return getTasksWithoutDueDate(tasks);
@@ -46,8 +61,21 @@ export function MonthlyCalendarView({ tasks, onTaskUpdate, onTaskDelete, onTaskC
 
   const handleDayClick = (day: CalendarDay) => {
     if (day.isCurrentMonth) {
-      setSelectedDate(day.date);
+      setSelectedDay(day);
     }
+  };
+
+  const getMilestoneColorClass = (color: Milestone['color']) => {
+    const colorMap = {
+      red: { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200' },
+      orange: { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200' },
+      yellow: { bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-200' },
+      green: { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-200' },
+      blue: { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200' },
+      purple: { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-200' },
+      pink: { bg: 'bg-pink-100', text: 'text-pink-700', border: 'border-pink-200' },
+    };
+    return colorMap[color] || colorMap.blue;
   };
 
   const getPriorityColor = (priority?: string) => {
@@ -142,7 +170,25 @@ export function MonthlyCalendarView({ tasks, onTaskUpdate, onTaskDelete, onTaskC
                   </div>
 
                   <div className="space-y-1">
-                    {day.tasks.slice(0, 3).map(task => (
+                    {day.milestones.map(milestone => {
+                      const colorClass = getMilestoneColorClass(milestone.color);
+                      return (
+                        <div
+                          key={milestone.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDayClick(day);
+                          }}
+                          className={`text-xs p-1.5 rounded border ${colorClass.border} ${colorClass.bg} cursor-pointer transition-all hover:shadow-sm`}
+                        >
+                          <div className={`truncate font-semibold ${colorClass.text}`}>
+                            {milestone.title}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {day.tasks.slice(0, day.milestones.length > 0 ? 2 : 3).map(task => (
                       <div
                         key={task.id}
                         onClick={(e) => {
@@ -175,9 +221,10 @@ export function MonthlyCalendarView({ tasks, onTaskUpdate, onTaskDelete, onTaskC
                       </div>
                     ))}
 
-                    {day.tasks.length > 3 && (
+                    {(day.tasks.length > (day.milestones.length > 0 ? 2 : 3) || day.milestones.length > 1) && (
                       <div className="text-xs text-gray-500 text-center py-1">
-                        +{day.tasks.length - 3} 更多
+                        {day.milestones.length > 1 && `${day.milestones.length} 节点 `}
+                        {day.tasks.length > (day.milestones.length > 0 ? 2 : 3) && `+${day.tasks.length - (day.milestones.length > 0 ? 2 : 3)} 任务`}
                       </div>
                     )}
                   </div>
@@ -236,6 +283,24 @@ export function MonthlyCalendarView({ tasks, onTaskUpdate, onTaskDelete, onTaskC
             setSelectedTask(null);
           }}
           availableOwners={availableOwners}
+        />
+      )}
+
+      {selectedDay && (
+        <DayDetailModal
+          isOpen={true}
+          date={selectedDay.date}
+          tasks={selectedDay.tasks}
+          milestones={selectedDay.milestones}
+          onClose={() => setSelectedDay(null)}
+          onTaskClick={(task) => {
+            setSelectedTask(task);
+            setSelectedDay(null);
+          }}
+          onTaskComplete={onTaskComplete}
+          onMilestoneCreate={onMilestoneCreate}
+          onMilestoneUpdate={onMilestoneUpdate}
+          onMilestoneDelete={onMilestoneDelete}
         />
       )}
     </div>

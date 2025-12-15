@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Task } from './types';
+import { Task, Milestone } from './types';
 import { TaskCard } from './components/TaskCard';
 import { TextInput } from './components/TextInput';
 import { parseVoiceInput } from './utils/taskParser';
@@ -20,6 +20,7 @@ import { sendTaskCreatedNotification, sendTaskUpdatedNotification, sendTaskCompl
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
@@ -70,6 +71,7 @@ function App() {
         console.log('[初始化] ✓ 数据库连接成功');
         await loadTasks('initial');
         await loadOwners();
+        await loadMilestones();
       }
     };
 
@@ -117,6 +119,69 @@ function App() {
       console.log('[加载负责人] 使用默认值');
       setAvailableOwners(['阿伟', 'choco', '05']);
     }
+  };
+
+  const loadMilestones = async () => {
+    console.log('[加载节点] 开始加载...');
+    const result = await databaseService.getMilestones();
+
+    if (result.error || result.isOffline) {
+      console.warn('[加载节点] ⚠️ 数据库错误或离线');
+      setMilestones([]);
+      return;
+    }
+
+    const loadedMilestones = result.data || [];
+    console.log(`[加载节点] ✓ 成功加载 ${loadedMilestones.length} 个节点`);
+    setMilestones(loadedMilestones);
+  };
+
+  const handleCreateMilestone = async (milestoneData: Omit<Milestone, 'id' | 'createdAt'>) => {
+    console.log('[创建节点] 开始创建:', milestoneData.title);
+
+    const result = await databaseService.createMilestone(milestoneData);
+
+    if (result.error || !result.data) {
+      console.error('[创建节点] ❌ 失败:', result.error?.message);
+      showToast('创建节点失败', 'error');
+      return;
+    }
+
+    console.log('[创建节点] ✓ 成功');
+    setMilestones(prev => [...prev, result.data!]);
+    showToast('节点创建成功', 'success');
+  };
+
+  const handleUpdateMilestone = async (milestone: Milestone) => {
+    console.log('[更新节点] 开始更新:', milestone.id);
+
+    const result = await databaseService.updateMilestone(milestone.id, milestone);
+
+    if (result.error || !result.data) {
+      console.error('[更新节点] ❌ 失败:', result.error?.message);
+      showToast('更新节点失败', 'error');
+      return;
+    }
+
+    console.log('[更新节点] ✓ 成功');
+    setMilestones(prev => prev.map(m => m.id === milestone.id ? result.data! : m));
+    showToast('节点更新成功', 'success');
+  };
+
+  const handleDeleteMilestone = async (milestoneId: string) => {
+    console.log('[删除节点] 开始删除:', milestoneId);
+
+    const result = await databaseService.deleteMilestone(milestoneId);
+
+    if (result.error) {
+      console.error('[删除节点] ❌ 失败:', result.error?.message);
+      showToast('删除节点失败', 'error');
+      return;
+    }
+
+    console.log('[删除节点] ✓ 成功');
+    setMilestones(prev => prev.filter(m => m.id !== milestoneId));
+    showToast('节点删除成功', 'success');
   };
 
   const handleScroll = useCallback(() => {
@@ -1069,9 +1134,13 @@ function App() {
         ) : viewMode === 'calendar' ? (
           <MonthlyCalendarView
             tasks={filteredTasks}
+            milestones={milestones}
             onTaskUpdate={handleUpdateTask}
             onTaskDelete={handleDeleteTask}
             onTaskComplete={handleCompleteTask}
+            onMilestoneCreate={handleCreateMilestone}
+            onMilestoneUpdate={handleUpdateMilestone}
+            onMilestoneDelete={handleDeleteMilestone}
             availableOwners={availableOwners}
           />
         ) : sortedTasks.length === 0 ? (

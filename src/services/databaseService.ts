@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Task, OperationLog } from '../types';
+import { Task, OperationLog, Milestone } from '../types';
 
 export interface DatabaseOperationResult<T> {
   data: T | null;
@@ -849,6 +849,279 @@ class DatabaseService {
       };
     } catch (err) {
       console.error('[DB Service] ❌ Exception while deleting owner:', err);
+      this.isOnline = false;
+
+      return {
+        data: null,
+        error: err instanceof Error ? err : new Error('Unknown error'),
+        isOffline: true
+      };
+    }
+  }
+
+  async getMilestones(): Promise<DatabaseOperationResult<Milestone[]>> {
+    console.log('[DB Service] Getting milestones...');
+
+    try {
+      const { data, error } = await supabase
+        .from('milestones')
+        .select('*')
+        .order('date', { ascending: true });
+
+      if (error) {
+        console.error('[DB Service] ❌ Error fetching milestones:', error.message);
+
+        if (this.isNetworkError(error)) {
+          this.isOnline = false;
+          return {
+            data: null,
+            error: new Error('Network connection failed'),
+            isOffline: true
+          };
+        }
+
+        return {
+          data: null,
+          error: new Error(error.message),
+          isOffline: false
+        };
+      }
+
+      if (!data) {
+        console.log('[DB Service] ✓ No milestones found, returning empty array');
+        return { data: [], error: null, isOffline: false };
+      }
+
+      const mappedMilestones: Milestone[] = data.map(milestone => ({
+        id: milestone.id,
+        title: milestone.title,
+        description: milestone.description || '',
+        date: new Date(milestone.date).getTime(),
+        color: milestone.color as Milestone['color'],
+        createdAt: new Date(milestone.created_at).getTime()
+      }));
+
+      console.log(`[DB Service] ✓ Retrieved ${mappedMilestones.length} milestones`);
+      return {
+        data: mappedMilestones,
+        error: null,
+        isOffline: false
+      };
+    } catch (err) {
+      console.error('[DB Service] ❌ Exception while fetching milestones:', err);
+      this.isOnline = false;
+
+      return {
+        data: null,
+        error: err instanceof Error ? err : new Error('Unknown error'),
+        isOffline: true
+      };
+    }
+  }
+
+  async createMilestone(milestoneData: Omit<Milestone, 'id' | 'createdAt'>): Promise<DatabaseOperationResult<Milestone>> {
+    console.log('[DB Service] Creating milestone:', milestoneData.title);
+
+    if (!this.isOnline) {
+      return {
+        data: null,
+        error: new Error('Database is offline'),
+        isOffline: true
+      };
+    }
+
+    try {
+      const insertData = {
+        title: milestoneData.title,
+        description: milestoneData.description || '',
+        date: new Date(milestoneData.date).toISOString(),
+        color: milestoneData.color
+      };
+
+      const { data, error } = await supabase
+        .from('milestones')
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[DB Service] ❌ Error creating milestone:', error.message);
+
+        if (this.isNetworkError(error)) {
+          this.isOnline = false;
+          return {
+            data: null,
+            error: new Error('Network connection failed'),
+            isOffline: true
+          };
+        }
+
+        return {
+          data: null,
+          error: new Error(error.message),
+          isOffline: false
+        };
+      }
+
+      if (!data) {
+        return {
+          data: null,
+          error: new Error('No data returned from insert'),
+          isOffline: false
+        };
+      }
+
+      const newMilestone: Milestone = {
+        id: data.id,
+        title: data.title,
+        description: data.description || '',
+        date: new Date(data.date).getTime(),
+        color: data.color as Milestone['color'],
+        createdAt: new Date(data.created_at).getTime()
+      };
+
+      console.log('[DB Service] ✓ Milestone created successfully');
+      return {
+        data: newMilestone,
+        error: null,
+        isOffline: false
+      };
+    } catch (err) {
+      console.error('[DB Service] ❌ Exception while creating milestone:', err);
+      this.isOnline = false;
+
+      return {
+        data: null,
+        error: err instanceof Error ? err : new Error('Unknown error'),
+        isOffline: true
+      };
+    }
+  }
+
+  async updateMilestone(milestoneId: string, updates: Partial<Milestone>): Promise<DatabaseOperationResult<Milestone>> {
+    console.log('[DB Service] Updating milestone:', milestoneId);
+
+    if (!this.isOnline) {
+      return {
+        data: null,
+        error: new Error('Database is offline'),
+        isOffline: true
+      };
+    }
+
+    try {
+      const updateData: Record<string, unknown> = {};
+
+      if (updates.title !== undefined) updateData.title = updates.title;
+      if (updates.description !== undefined) updateData.description = updates.description;
+      if (updates.date !== undefined) updateData.date = new Date(updates.date).toISOString();
+      if (updates.color !== undefined) updateData.color = updates.color;
+
+      const { data, error } = await supabase
+        .from('milestones')
+        .update(updateData)
+        .eq('id', milestoneId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[DB Service] ❌ Error updating milestone:', error.message);
+
+        if (this.isNetworkError(error)) {
+          this.isOnline = false;
+          return {
+            data: null,
+            error: new Error('Network connection failed'),
+            isOffline: true
+          };
+        }
+
+        return {
+          data: null,
+          error: new Error(error.message),
+          isOffline: false
+        };
+      }
+
+      if (!data) {
+        return {
+          data: null,
+          error: new Error('Milestone not found'),
+          isOffline: false
+        };
+      }
+
+      const updatedMilestone: Milestone = {
+        id: data.id,
+        title: data.title,
+        description: data.description || '',
+        date: new Date(data.date).getTime(),
+        color: data.color as Milestone['color'],
+        createdAt: new Date(data.created_at).getTime()
+      };
+
+      console.log('[DB Service] ✓ Milestone updated:', updatedMilestone.id);
+      return {
+        data: updatedMilestone,
+        error: null,
+        isOffline: false
+      };
+    } catch (err) {
+      console.error('[DB Service] ❌ Exception while updating milestone:', err);
+      this.isOnline = false;
+
+      return {
+        data: null,
+        error: err instanceof Error ? err : new Error('Unknown error'),
+        isOffline: true
+      };
+    }
+  }
+
+  async deleteMilestone(milestoneId: string): Promise<DatabaseOperationResult<boolean>> {
+    console.log('[DB Service] Deleting milestone:', milestoneId);
+
+    if (!this.isOnline) {
+      return {
+        data: null,
+        error: new Error('Database is offline'),
+        isOffline: true
+      };
+    }
+
+    try {
+      const { error } = await supabase
+        .from('milestones')
+        .delete()
+        .eq('id', milestoneId);
+
+      if (error) {
+        console.error('[DB Service] ❌ Error deleting milestone:', error.message);
+
+        if (this.isNetworkError(error)) {
+          this.isOnline = false;
+          return {
+            data: null,
+            error: new Error('Network connection failed'),
+            isOffline: true
+          };
+        }
+
+        return {
+          data: null,
+          error: new Error(error.message),
+          isOffline: false
+        };
+      }
+
+      console.log('[DB Service] ✓ Milestone deleted:', milestoneId);
+      return {
+        data: true,
+        error: null,
+        isOffline: false
+      };
+    } catch (err) {
+      console.error('[DB Service] ❌ Exception while deleting milestone:', err);
       this.isOnline = false;
 
       return {

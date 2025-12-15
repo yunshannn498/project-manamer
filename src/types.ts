@@ -33,3 +33,12 @@ export interface OperationLog {
   userInfo?: string;
   createdAt: number;
 }
+
+export interface Milestone {
+  id: string;
+  title: string;
+  description?: string;
+  date: number;
+  color: 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'purple' | 'pink';
+  createdAt: number;
+}

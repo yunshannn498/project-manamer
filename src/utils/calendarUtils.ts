@@ -1,4 +1,4 @@
-import { Task } from '../types';
+import { Task, Milestone } from '../types';
 
 export interface CalendarDay {
   date: Date;
@@ -6,13 +6,14 @@ export interface CalendarDay {
   isCurrentMonth: boolean;
   isToday: boolean;
   tasks: Task[];
+  milestones: Milestone[];
 }
 
 export interface CalendarWeek {
   days: CalendarDay[];
 }
 
-export function getMonthCalendar(year: number, month: number, tasks: Task[]): CalendarWeek[] {
+export function getMonthCalendar(year: number, month: number, tasks: Task[], milestones: Milestone[] = []): CalendarWeek[] {
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
   const daysInMonth = lastDay.getDate();
@@ -27,6 +28,7 @@ export function getMonthCalendar(year: number, month: number, tasks: Task[]): Ca
   today.setHours(0, 0, 0, 0);
 
   const tasksByDate = groupTasksByDate(tasks);
+  const milestonesByDate = groupMilestonesByDate(milestones);
 
   const weeks: CalendarWeek[] = [];
   let currentWeek: CalendarDay[] = [];
@@ -39,6 +41,7 @@ export function getMonthCalendar(year: number, month: number, tasks: Task[]): Ca
       isCurrentMonth: false,
       isToday: false,
       tasks: [],
+      milestones: [],
     });
   }
 
@@ -53,6 +56,7 @@ export function getMonthCalendar(year: number, month: number, tasks: Task[]): Ca
       isCurrentMonth: true,
       isToday,
       tasks: tasksByDate[dateKey] || [],
+      milestones: milestonesByDate[dateKey] || [],
     });
 
     if (currentWeek.length === 7) {
@@ -71,6 +75,7 @@ export function getMonthCalendar(year: number, month: number, tasks: Task[]): Ca
         isCurrentMonth: false,
         isToday: false,
         tasks: [],
+        milestones: [],
       });
       nextMonthDay++;
     }
@@ -102,6 +107,22 @@ function groupTasksByDate(tasks: Task[]): Record<string, Task[]> {
       const bPriority = priorityOrder[b.priority || 'low'];
       return aPriority - bPriority;
     });
+  });
+
+  return grouped;
+}
+
+function groupMilestonesByDate(milestones: Milestone[]): Record<string, Milestone[]> {
+  const grouped: Record<string, Milestone[]> = {};
+
+  milestones.forEach(milestone => {
+    const date = new Date(milestone.date);
+    const dateKey = formatDateKey(date);
+
+    if (!grouped[dateKey]) {
+      grouped[dateKey] = [];
+    }
+    grouped[dateKey].push(milestone);
   });
 
   return grouped;
