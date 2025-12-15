@@ -184,6 +184,19 @@ function App() {
     showToast('节点删除成功', 'success');
   };
 
+  const handleQuickCreateTask = async (taskData: { title: string; dueDate: number }) => {
+    console.log('[快速创建任务] 开始创建:', taskData.title);
+
+    await handleAddTask({
+      title: taskData.title,
+      dueDate: taskData.dueDate,
+      description: '',
+      status: 'todo',
+      priority: 'medium',
+      tags: ['负责人:阿伟'],
+    });
+  };
+
   const handleScroll = useCallback(() => {
     if (window.innerWidth >= 768) {
       setIsHeaderVisible(true);
@@ -1138,6 +1151,7 @@ function App() {
             onTaskUpdate={handleUpdateTask}
             onTaskDelete={handleDeleteTask}
             onTaskComplete={handleCompleteTask}
+            onTaskCreate={handleQuickCreateTask}
             onMilestoneCreate={handleCreateMilestone}
             onMilestoneUpdate={handleUpdateMilestone}
             onMilestoneDelete={handleDeleteMilestone}

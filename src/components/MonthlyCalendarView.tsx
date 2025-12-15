@@ -11,6 +11,7 @@ interface MonthlyCalendarViewProps {
   onTaskUpdate: (task: Task) => void;
   onTaskDelete: (taskId: string) => void;
   onTaskComplete: (taskId: string) => void;
+  onTaskCreate: (taskData: { title: string; dueDate: number }) => void;
   onMilestoneCreate: (milestone: Omit<Milestone, 'id' | 'createdAt'>) => void;
   onMilestoneUpdate: (milestone: Milestone) => void;
   onMilestoneDelete: (milestoneId: string) => void;
@@ -23,6 +24,7 @@ export function MonthlyCalendarView({
   onTaskUpdate,
   onTaskDelete,
   onTaskComplete,
+  onTaskCreate,
   onMilestoneCreate,
   onMilestoneUpdate,
   onMilestoneDelete,
@@ -298,6 +300,7 @@ export function MonthlyCalendarView({
             setSelectedDay(null);
           }}
           onTaskComplete={onTaskComplete}
+          onTaskCreate={onTaskCreate}
           onMilestoneCreate={onMilestoneCreate}
           onMilestoneUpdate={onMilestoneUpdate}
           onMilestoneDelete={onMilestoneDelete}

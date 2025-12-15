@@ -10,6 +10,7 @@ interface DayDetailModalProps {
   onClose: () => void;
   onTaskClick: (task: Task) => void;
   onTaskComplete: (taskId: string) => void;
+  onTaskCreate: (taskData: { title: string; dueDate: number }) => void;
   onMilestoneCreate: (milestone: Omit<Milestone, 'id' | 'createdAt'>) => void;
   onMilestoneUpdate: (milestone: Milestone) => void;
   onMilestoneDelete: (milestoneId: string) => void;
@@ -33,6 +34,7 @@ export function DayDetailModal({
   onClose,
   onTaskClick,
   onTaskComplete,
+  onTaskCreate,
   onMilestoneCreate,
   onMilestoneUpdate,
   onMilestoneDelete,
@@ -42,10 +44,24 @@ export function DayDetailModal({
   const [milestoneTitle, setMilestoneTitle] = useState('');
   const [milestoneDescription, setMilestoneDescription] = useState('');
   const [milestoneColor, setMilestoneColor] = useState<Milestone['color']>('blue');
+  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [taskTitle, setTaskTitle] = useState('');
 
   if (!isOpen) return null;
 
   const dateStr = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+
+  const handleCreateTask = () => {
+    if (!taskTitle.trim()) return;
+
+    onTaskCreate({
+      title: taskTitle,
+      dueDate: date.getTime(),
+    });
+
+    setTaskTitle('');
+    setIsAddingTask(false);
+  };
 
   const handleCreateMilestone = () => {
     if (!milestoneTitle.trim()) return;
@@ -233,9 +249,55 @@ export function DayDetailModal({
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              任务 ({tasks.length})
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">
+                任务 ({tasks.length})
+              </h3>
+              <button
+                onClick={() => setIsAddingTask(true)}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-primary-100 text-primary-700 rounded-lg hover:bg-primary-200 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                添加任务
+              </button>
+            </div>
+
+            {isAddingTask && (
+              <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-3">
+                <input
+                  type="text"
+                  placeholder="任务标题"
+                  value={taskTitle}
+                  onChange={(e) => setTaskTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleCreateTask();
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCreateTask}
+                    className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+                  >
+                    创建
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsAddingTask(false);
+                      setTaskTitle('');
+                    }}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                  >
+                    取消
+                  </button>
+                </div>
+              </div>
+            )}
+
             {tasks.length === 0 ? (
               <p className="text-gray-400 text-sm">暂无任务</p>
             ) : (
