@@ -31,7 +31,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: webhookData, error: webhookError } = await supabase
       .from("feishu_webhooks")
-      .select("webhook_url, is_enabled")
+      .select("webhook_url, is_enabled, open_id, enable_mention")
       .eq("owner_name", ownerName)
       .eq("is_enabled", true)
       .maybeSingle();
@@ -60,10 +60,16 @@ Deno.serve(async (req: Request) => {
 
     console.log("[Feishu Edge] 找到 webhook，准备发送...");
 
+    let finalMessage = message;
+    if (webhookData.enable_mention && webhookData.open_id) {
+      finalMessage = `<at user_id="${webhookData.open_id}">${ownerName}</at> ${message}`;
+      console.log("[Feishu Edge] 启用 @mention:", webhookData.open_id);
+    }
+
     const payload = {
       msg_type: "text",
       content: {
-        text: message,
+        text: finalMessage,
       },
     };
 
