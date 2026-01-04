@@ -10,12 +10,13 @@ import { parseTaskIntent as parseTaskIntentLocal } from './services/semanticPars
 import { testDatabaseConnection } from './lib/supabase';
 import { databaseService } from './services/databaseService';
 import { saveTasksToLocal, loadTasksFromLocal } from './storage';
-import { ListTodo, Search, ChevronDown, Download, History, MoreVertical, Users, Calendar } from 'lucide-react';
+import { ListTodo, Search, ChevronDown, Download, History, MoreVertical, Users, Calendar, FileText } from 'lucide-react';
 import NetworkStatus from './components/NetworkStatus';
 import ImportExportModal from './components/ImportExportModal';
 import OperationLogsModal from './components/OperationLogsModal';
 import OwnerManagementModal from './components/OwnerManagementModal';
 import { MonthlyCalendarView } from './components/MonthlyCalendarView';
+import { WeeklyReportView } from './components/WeeklyReportView';
 import { sendTaskCreatedNotification, sendTaskUpdatedNotification, sendTaskCompletedNotification, sendTaskDeletedNotification, checkDueReminders } from './services/feishuService';
 import { setAvailableOwners as setGlobalAvailableOwners } from './utils/ownerConfig';
 
@@ -42,7 +43,7 @@ function App() {
   const [showImportExportModal, setShowImportExportModal] = useState(false);
   const [showOperationLogsModal, setShowOperationLogsModal] = useState(false);
   const [showOwnerManagementModal, setShowOwnerManagementModal] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'weekly'>('list');
   const lastScrollY = useRef(0);
   const scrollThreshold = 50;
 
@@ -918,28 +919,39 @@ function App() {
               </button>
             </div>
 
-            <div className="flex gap-3 md:gap-2">
+            <div className="flex gap-2">
               <button
                 onClick={() => setViewMode('list')}
-                className={`flex-1 py-2.5 md:py-2 px-4 rounded-xl transition-all duration-300 text-sm font-medium active:scale-95 shadow-sm hover:shadow-md flex items-center justify-center gap-2 ${
+                className={`flex-1 py-2.5 md:py-2 px-3 rounded-xl transition-all duration-300 text-sm font-medium active:scale-95 shadow-sm hover:shadow-md flex items-center justify-center gap-1.5 ${
                   viewMode === 'list'
                     ? 'bg-gradient-to-r from-gray-700 to-gray-800 text-white'
                     : 'bg-white text-gray-600 hover:bg-gradient-to-r hover:from-orange-50 hover:to-amber-50'
                 }`}
               >
                 <ListTodo size={16} />
-                <span>列表视图</span>
+                <span className="hidden md:inline">列表</span>
               </button>
               <button
                 onClick={() => setViewMode('calendar')}
-                className={`flex-1 py-2.5 md:py-2 px-4 rounded-xl transition-all duration-300 text-sm font-medium active:scale-95 shadow-sm hover:shadow-md flex items-center justify-center gap-2 ${
+                className={`flex-1 py-2.5 md:py-2 px-3 rounded-xl transition-all duration-300 text-sm font-medium active:scale-95 shadow-sm hover:shadow-md flex items-center justify-center gap-1.5 ${
                   viewMode === 'calendar'
                     ? 'bg-gradient-to-r from-gray-700 to-gray-800 text-white'
                     : 'bg-white text-gray-600 hover:bg-gradient-to-r hover:from-orange-50 hover:to-amber-50'
                 }`}
               >
                 <Calendar size={16} />
-                <span>月度视图</span>
+                <span className="hidden md:inline">月度</span>
+              </button>
+              <button
+                onClick={() => setViewMode('weekly')}
+                className={`flex-1 py-2.5 md:py-2 px-3 rounded-xl transition-all duration-300 text-sm font-medium active:scale-95 shadow-sm hover:shadow-md flex items-center justify-center gap-1.5 ${
+                  viewMode === 'weekly'
+                    ? 'bg-gradient-to-r from-gray-700 to-gray-800 text-white'
+                    : 'bg-white text-gray-600 hover:bg-gradient-to-r hover:from-orange-50 hover:to-amber-50'
+                }`}
+              >
+                <FileText size={16} />
+                <span className="hidden md:inline">周报</span>
               </button>
             </div>
 
@@ -1163,6 +1175,8 @@ function App() {
             onMilestoneDelete={handleDeleteMilestone}
             availableOwners={availableOwners}
           />
+        ) : viewMode === 'weekly' ? (
+          <WeeklyReportView tasks={tasks} />
         ) : sortedTasks.length === 0 ? (
           <div className="text-center py-16 animate-fade-in">
             <div className="mb-4">
