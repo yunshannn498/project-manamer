@@ -16,8 +16,8 @@ interface Task {
 }
 
 function extractOwnerFromTags(tags: string[]): string | null {
-  const ownerTag = tags.find((tag) => tag.startsWith('@'));
-  return ownerTag ? ownerTag.substring(1) : null;
+  const ownerTag = tags.find((tag) => tag.startsWith('负责人:'));
+  return ownerTag ? ownerTag.replace('负责人:', '').trim() : null;
 }
 
 function formatTimeRemaining(dueDate: string): string {
@@ -52,19 +52,20 @@ Deno.serve(async (req: Request) => {
 
     console.log("[Reminder Check] 开始检查即将过期的任务...");
 
-    // Calculate time window: now to 2 hours from now
+    // Calculate time window: 30-40 minutes from now
     const now = new Date();
-    const twoHoursLater = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+    const thirtyMinutesLater = new Date(now.getTime() + 30 * 60 * 1000);
+    const fortyMinutesLater = new Date(now.getTime() + 40 * 60 * 1000);
 
-    // Query tasks that need reminders
+    // Query tasks that need reminders (due in 30-40 minutes and haven't been reminded)
     const { data: tasks, error: tasksError } = await supabase
       .from("tasks")
-      .select("id, title, tags, due_date, priority")
+      .select("id, title, tags, due_date, priority, last_reminder_sent")
       .neq("status", "done")
       .not("due_date", "is", null)
-      .lte("due_date", twoHoursLater.toISOString())
-      .gt("due_date", now.toISOString())
-      .or(`last_reminder_sent.is.null,last_reminder_sent.lt.${new Date(new Date().getTime() - 2 * 60 * 60 * 1000).toISOString()}`);
+      .gte("due_date", thirtyMinutesLater.toISOString())
+      .lte("due_date", fortyMinutesLater.toISOString())
+      .or(`last_reminder_sent.is.null,last_reminder_sent.lt.${new Date(new Date().getTime() - 24 * 60 * 60 * 1000).toISOString()}`);
 
     if (tasksError) {
       console.error("[Reminder Check] 查询任务失败:", tasksError);
