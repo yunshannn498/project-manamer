@@ -1,10 +1,10 @@
+import { getAvailableOwners } from './ownerConfig';
+
 export interface CleanTitleResult {
   cleanTitle: string;
   removedPatterns: string[];
   confidence: number;
 }
-
-const OWNER_PATTERNS = ['阿伟', 'choco', '05'];
 
 const PRIORITY_KEYWORDS = [
   '紧急', '重要', '高优先级', '高优',
@@ -59,7 +59,8 @@ export const cleanTaskTitle = (rawText: string): CleanTitleResult => {
     }
   }
 
-  for (const owner of OWNER_PATTERNS) {
+  const ownerPatterns = getAvailableOwners();
+  for (const owner of ownerPatterns) {
     if (cleanedText.includes(owner)) {
       const ownerRegex = new RegExp(owner, 'g');
       const ownerMatches = cleanedText.match(ownerRegex);

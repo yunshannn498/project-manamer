@@ -1,6 +1,7 @@
 import { Task } from '../types';
 import { parseVoiceInput } from '../utils/taskParser';
 import { cleanTaskTitle, shouldUseCleanedTitle } from '../utils/titleCleaner';
+import { getAvailableOwners } from '../utils/ownerConfig';
 
 interface ParseResponse {
   intent: 'create';
@@ -27,13 +28,17 @@ const parseWithGemini = async (text: string): Promise<GeminiResponse | null> => 
   }
 
   try {
+    const availableOwners = getAvailableOwners();
+    const ownersStr = availableOwners.join('、');
+    const exampleOwner = availableOwners[0] || '阿伟';
+
     const prompt = `你是一个任务管理助手。用户输入了一段任务描述，请提取以下信息：
 
 用户输入: "${text}"
 
 请从文本中提取：
 1. cleanTitle: 纯粹的任务描述（去掉负责人、时间、优先级等元信息）
-2. owner: 负责人（如果提到：阿伟、choco、05）
+2. owner: 负责人（如果提到：${ownersStr}）
 3. priority: 优先级（high/medium/low，如果提到：紧急、重要、普通、不急等）
 4. dueDate: 截止时间的自然语言描述（保留原文，如：10月9日、明天、下周等）
 5. confidence: 你对提取准确度的信心（0-1之间）
@@ -42,8 +47,8 @@ const parseWithGemini = async (text: string): Promise<GeminiResponse | null> => 
 输入："给奉中附初列时间表 choco 10月9日"
 输出：{"cleanTitle": "给奉中附初列时间表", "owner": "choco", "dueDate": "10月9日", "confidence": 0.95}
 
-输入："紧急 明天下午3点开会 阿伟"
-输出：{"cleanTitle": "开会", "owner": "阿伟", "priority": "high", "dueDate": "明天下午3点", "confidence": 0.9}
+输入："紧急 明天下午3点开会 ${exampleOwner}"
+输出：{"cleanTitle": "开会", "owner": "${exampleOwner}", "priority": "high", "dueDate": "明天下午3点", "confidence": 0.9}
 
 请以JSON格式返回结果，只返回JSON，不要其他文字。`;
 

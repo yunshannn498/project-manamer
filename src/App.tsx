@@ -17,6 +17,7 @@ import OperationLogsModal from './components/OperationLogsModal';
 import OwnerManagementModal from './components/OwnerManagementModal';
 import { MonthlyCalendarView } from './components/MonthlyCalendarView';
 import { sendTaskCreatedNotification, sendTaskUpdatedNotification, sendTaskCompletedNotification, sendTaskDeletedNotification, checkDueReminders } from './services/feishuService';
+import { setAvailableOwners as setGlobalAvailableOwners } from './utils/ownerConfig';
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -66,7 +67,9 @@ function App() {
           console.log(`[初始化] ✓ 从本地加载 ${localTasks.length} 条任务`);
         }
         setLoadingTasks(false);
-        setAvailableOwners(['阿伟', 'choco', '05']);
+        const defaultOwners = ['阿伟', 'choco', '05'];
+        setAvailableOwners(defaultOwners);
+        setGlobalAvailableOwners(defaultOwners);
       } else {
         console.log('[初始化] ✓ 数据库连接成功');
         await loadTasks('initial');
@@ -115,9 +118,12 @@ function App() {
       const ownerNames = result.data.map(owner => owner.owner_name);
       console.log('[加载负责人] ✓ 成功:', ownerNames);
       setAvailableOwners(ownerNames);
+      setGlobalAvailableOwners(ownerNames);
     } else {
       console.log('[加载负责人] 使用默认值');
-      setAvailableOwners(['阿伟', 'choco', '05']);
+      const defaultOwners = ['阿伟', 'choco', '05'];
+      setAvailableOwners(defaultOwners);
+      setGlobalAvailableOwners(defaultOwners);
     }
   };
 

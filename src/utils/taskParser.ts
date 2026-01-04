@@ -1,5 +1,6 @@
 import { Task } from '../types';
 import { cleanTaskTitle, shouldUseCleanedTitle } from './titleCleaner';
+import { getAvailableOwners } from './ownerConfig';
 
 const parseDateTime = (text: string): number | undefined => {
   console.log('[parseDateTime] 输入文本:', text);
@@ -220,7 +221,7 @@ export const parseVoiceInput = (text: string): Omit<Task, 'id' | 'createdAt'> =>
 
   const tags: string[] = [];
 
-  const owners = ['阿伟', 'choco', '05'];
+  const owners = getAvailableOwners();
   for (const owner of owners) {
     if (text.includes(owner)) {
       tags.push(`负责人:${owner}`);
@@ -303,7 +304,7 @@ export const parseEditIntent = (text: string): Partial<Omit<Task, 'id' | 'create
 
   const tags: string[] = [];
 
-  const owners = ['阿伟', 'choco', '05'];
+  const owners = getAvailableOwners();
   for (const owner of owners) {
     if (text.includes(owner)) {
       tags.push(`负责人:${owner}`);
