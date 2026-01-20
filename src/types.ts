@@ -42,3 +42,12 @@ export interface Milestone {
   color: 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'purple' | 'pink';
   createdAt: number;
 }
+
+export interface Client {
+  id: string;
+  clientName: string;
+  ongoingProjects?: string;
+  notes?: string;
+  createdAt: number;
+  updatedAt: number;
+}

@@ -10,11 +10,12 @@ import { parseTaskIntent as parseTaskIntentLocal } from './services/semanticPars
 import { testDatabaseConnection } from './lib/supabase';
 import { databaseService } from './services/databaseService';
 import { saveTasksToLocal, loadTasksFromLocal } from './storage';
-import { ListTodo, Search, ChevronDown, Download, History, MoreVertical, Users, Calendar, FileText } from 'lucide-react';
+import { ListTodo, Search, ChevronDown, Download, History, MoreVertical, Users, Calendar, FileText, Briefcase } from 'lucide-react';
 import NetworkStatus from './components/NetworkStatus';
 import ImportExportModal from './components/ImportExportModal';
 import OperationLogsModal from './components/OperationLogsModal';
 import OwnerManagementModal from './components/OwnerManagementModal';
+import ClientManagementModal from './components/ClientManagementModal';
 import { MonthlyCalendarView } from './components/MonthlyCalendarView';
 import { WeeklyReportView } from './components/WeeklyReportView';
 import { sendTaskCreatedNotification, sendTaskUpdatedNotification, sendTaskCompletedNotification, sendTaskDeletedNotification, checkDueReminders } from './services/feishuService';
@@ -43,6 +44,7 @@ function App() {
   const [showImportExportModal, setShowImportExportModal] = useState(false);
   const [showOperationLogsModal, setShowOperationLogsModal] = useState(false);
   const [showOwnerManagementModal, setShowOwnerManagementModal] = useState(false);
+  const [showClientManagementModal, setShowClientManagementModal] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'weekly'>('list');
   const lastScrollY = useRef(0);
   const scrollThreshold = 50;
@@ -857,6 +859,16 @@ function App() {
                         <Users size={16} className="text-primary-500" />
                         人员维护
                       </button>
+                      <button
+                        onClick={() => {
+                          setShowClientManagementModal(true);
+                          setShowMoreMenu(false);
+                        }}
+                        className="w-full px-4 py-3 text-left hover:bg-orange-50 text-sm text-gray-700 transition-all duration-200 font-medium flex items-center gap-2"
+                      >
+                        <Briefcase size={16} className="text-primary-500" />
+                        客户管理
+                      </button>
                     </div>
                   </>
                 )}
@@ -1261,6 +1273,11 @@ function App() {
           setShowOwnerManagementModal(false);
           loadOwners();
         }}
+      />
+
+      <ClientManagementModal
+        isOpen={showClientManagementModal}
+        onClose={() => setShowClientManagementModal(false)}
       />
     </div>
   );

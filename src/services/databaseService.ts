@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Task, OperationLog, Milestone } from '../types';
+import { Task, OperationLog, Milestone, Client } from '../types';
 
 export interface DatabaseOperationResult<T> {
   data: T | null;
@@ -1122,6 +1122,279 @@ class DatabaseService {
       };
     } catch (err) {
       console.error('[DB Service] ❌ Exception while deleting milestone:', err);
+      this.isOnline = false;
+
+      return {
+        data: null,
+        error: err instanceof Error ? err : new Error('Unknown error'),
+        isOffline: true
+      };
+    }
+  }
+
+  async getClients(): Promise<DatabaseOperationResult<Client[]>> {
+    console.log('[DB Service] Getting clients...');
+
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('[DB Service] ❌ Error fetching clients:', error.message);
+
+        if (this.isNetworkError(error)) {
+          this.isOnline = false;
+          return {
+            data: null,
+            error: new Error('Network connection failed'),
+            isOffline: true
+          };
+        }
+
+        return {
+          data: null,
+          error: new Error(error.message),
+          isOffline: false
+        };
+      }
+
+      if (!data) {
+        console.log('[DB Service] ✓ No clients found, returning empty array');
+        return { data: [], error: null, isOffline: false };
+      }
+
+      const mappedClients: Client[] = data.map(client => ({
+        id: client.id,
+        clientName: client.client_name,
+        ongoingProjects: client.ongoing_projects || '',
+        notes: client.notes || '',
+        createdAt: new Date(client.created_at).getTime(),
+        updatedAt: new Date(client.updated_at).getTime()
+      }));
+
+      console.log(`[DB Service] ✓ Retrieved ${mappedClients.length} clients`);
+      return {
+        data: mappedClients,
+        error: null,
+        isOffline: false
+      };
+    } catch (err) {
+      console.error('[DB Service] ❌ Exception while fetching clients:', err);
+      this.isOnline = false;
+
+      return {
+        data: null,
+        error: err instanceof Error ? err : new Error('Unknown error'),
+        isOffline: true
+      };
+    }
+  }
+
+  async createClient(clientData: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>): Promise<DatabaseOperationResult<Client>> {
+    console.log('[DB Service] Creating client:', clientData.clientName);
+
+    if (!this.isOnline) {
+      return {
+        data: null,
+        error: new Error('Database is offline'),
+        isOffline: true
+      };
+    }
+
+    try {
+      const insertData = {
+        client_name: clientData.clientName,
+        ongoing_projects: clientData.ongoingProjects || '',
+        notes: clientData.notes || ''
+      };
+
+      const { data, error } = await supabase
+        .from('clients')
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[DB Service] ❌ Error creating client:', error.message);
+
+        if (this.isNetworkError(error)) {
+          this.isOnline = false;
+          return {
+            data: null,
+            error: new Error('Network connection failed'),
+            isOffline: true
+          };
+        }
+
+        return {
+          data: null,
+          error: new Error(error.message),
+          isOffline: false
+        };
+      }
+
+      if (!data) {
+        return {
+          data: null,
+          error: new Error('No data returned from insert'),
+          isOffline: false
+        };
+      }
+
+      const newClient: Client = {
+        id: data.id,
+        clientName: data.client_name,
+        ongoingProjects: data.ongoing_projects || '',
+        notes: data.notes || '',
+        createdAt: new Date(data.created_at).getTime(),
+        updatedAt: new Date(data.updated_at).getTime()
+      };
+
+      console.log('[DB Service] ✓ Client created successfully');
+      return {
+        data: newClient,
+        error: null,
+        isOffline: false
+      };
+    } catch (err) {
+      console.error('[DB Service] ❌ Exception while creating client:', err);
+      this.isOnline = false;
+
+      return {
+        data: null,
+        error: err instanceof Error ? err : new Error('Unknown error'),
+        isOffline: true
+      };
+    }
+  }
+
+  async updateClient(clientId: string, updates: Partial<Omit<Client, 'id' | 'createdAt' | 'updatedAt'>>): Promise<DatabaseOperationResult<Client>> {
+    console.log('[DB Service] Updating client:', clientId);
+
+    if (!this.isOnline) {
+      return {
+        data: null,
+        error: new Error('Database is offline'),
+        isOffline: true
+      };
+    }
+
+    try {
+      const updateData: Record<string, unknown> = {
+        updated_at: new Date().toISOString()
+      };
+
+      if (updates.clientName !== undefined) updateData.client_name = updates.clientName;
+      if (updates.ongoingProjects !== undefined) updateData.ongoing_projects = updates.ongoingProjects;
+      if (updates.notes !== undefined) updateData.notes = updates.notes;
+
+      const { data, error } = await supabase
+        .from('clients')
+        .update(updateData)
+        .eq('id', clientId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[DB Service] ❌ Error updating client:', error.message);
+
+        if (this.isNetworkError(error)) {
+          this.isOnline = false;
+          return {
+            data: null,
+            error: new Error('Network connection failed'),
+            isOffline: true
+          };
+        }
+
+        return {
+          data: null,
+          error: new Error(error.message),
+          isOffline: false
+        };
+      }
+
+      if (!data) {
+        return {
+          data: null,
+          error: new Error('Client not found'),
+          isOffline: false
+        };
+      }
+
+      const updatedClient: Client = {
+        id: data.id,
+        clientName: data.client_name,
+        ongoingProjects: data.ongoing_projects || '',
+        notes: data.notes || '',
+        createdAt: new Date(data.created_at).getTime(),
+        updatedAt: new Date(data.updated_at).getTime()
+      };
+
+      console.log('[DB Service] ✓ Client updated:', updatedClient.id);
+      return {
+        data: updatedClient,
+        error: null,
+        isOffline: false
+      };
+    } catch (err) {
+      console.error('[DB Service] ❌ Exception while updating client:', err);
+      this.isOnline = false;
+
+      return {
+        data: null,
+        error: err instanceof Error ? err : new Error('Unknown error'),
+        isOffline: true
+      };
+    }
+  }
+
+  async deleteClient(clientId: string): Promise<DatabaseOperationResult<boolean>> {
+    console.log('[DB Service] Deleting client:', clientId);
+
+    if (!this.isOnline) {
+      return {
+        data: null,
+        error: new Error('Database is offline'),
+        isOffline: true
+      };
+    }
+
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', clientId);
+
+      if (error) {
+        console.error('[DB Service] ❌ Error deleting client:', error.message);
+
+        if (this.isNetworkError(error)) {
+          this.isOnline = false;
+          return {
+            data: null,
+            error: new Error('Network connection failed'),
+            isOffline: true
+          };
+        }
+
+        return {
+          data: null,
+          error: new Error(error.message),
+          isOffline: false
+        };
+      }
+
+      console.log('[DB Service] ✓ Client deleted:', clientId);
+      return {
+        data: true,
+        error: null,
+        isOffline: false
+      };
+    } catch (err) {
+      console.error('[DB Service] ❌ Exception while deleting client:', err);
       this.isOnline = false;
 
       return {
